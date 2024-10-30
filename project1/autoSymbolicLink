@@ -1,0 +1,59 @@
+#!/bin/bash
+
+
+checkingFile(){
+        # check if the starter files is already exist 
+        # return 1 if doesnt exist
+        if [[ -e './2420-as2-starting-files' ]];then
+            echo 'starting files is exist'
+            return 0 
+        else
+            return 1
+        fi
+
+}
+
+
+clone_dir(){
+
+    checkingFile # running checking
+    status=$? # get the return value and put it to status 
+
+    
+    # if the directory is not exist ( status = 1) it clone the starter files
+    if [[ status -eq 1 ]];then 
+        echo clonning....
+        git clone https://gitlab.com/cit2420/2420-as2-starting-files.git
+    fi
+}
+
+
+createSymbolicLink(){
+    
+
+
+    
+    mv $HOME/bin/* $HOME/assignment2/linuxAssignment2/project1/2420-as2-starting-files/bin 
+    # move any files in the home bin to the starter bin
+
+    if [[ -e $HOME/bin ]];then 
+        rm -rf $HOME/bin
+    fi
+    #remove bin folder in home directory 
+    
+    ln -s $HOME/assignment2/linuxAssignment2/project1/2420-as2-starting-files/bin $HOME/bin
+    #create a symbolic link from home/bin to /bin in the starter files
+
+
+
+
+}
+
+createSymbolicLink
+
+
+
+
+
+
+

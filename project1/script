@@ -84,34 +84,10 @@ installPackage(){
 
 
 
-checkingFile(){
-        # check if the starter files is already exist 
-        # return 1 if doesnt exist
-        if [[ -e './2420-as2-starting-files' ]];then
-            echo 'starting files is exist'
-            return 0 
-        else
-            return 1
-        fi
 
-}
-
-
-clone_dir(){
-
-    checkingFile # running checking
-    status=$? # get the return value and put it to status 
-
-    
-    # if the directory is not exist ( status = 1) it clone the starter files
-    if [[ status -eq 1 ]];then 
-        echo clonning....
-        git clone https://gitlab.com/cit2420/2420-as2-starting-files.git
-    fi
-}
 
 # get the flag, if the flag is p then ask for argument (names for the packages)
-while getopts "p:" opt;do
+while getopts "p:d" opt;do
     case $opt in 
 
     p)
@@ -119,9 +95,21 @@ while getopts "p:" opt;do
         # run the function install package and using argument of p as packages name
         
         ;;
+    d)
+        installPackage
+        ;;
     ?) 
         echo flag doesnt exist
         ;;
 
+
     esac
 done
+
+# ((OPTIND-1))
+
+if [[ -z $1 ]];then
+echo "this script allow you to install the default package and custom package"
+echo " -p "'<name of packages>' : download the packages ""
+echo " -d "                     : download the default packags""
+fi
