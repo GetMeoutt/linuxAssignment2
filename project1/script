@@ -4,28 +4,38 @@
 
 
 findPackage(){
+    ##################################
+    # this function check the package that user want to install on the system
+    # if the package is not exist then it will add to missing package array for it to be use in the  # installing function, if it already exist then it will do nothing
+    #
+    ##################################
    
-    reqPackage=( "git" "kakoune" "tmux")
-    declare missingPackage -a 
+    local reqPackage=( "git" "kakoune" "tmux") #defind the default package need to be install
+    reqPackage+=($@) #add package that user want to install
+    declare -al missingPackage 
+    #declear an emty array for package that will need to install (doesnt exist on the system)
+   
     
-
+    
+    # make a packagelist contain all of the packages name
     if [[ ! -e ./packagesList ]];then
         pacman -Qq > packagesList.txt
     else
         pacman -Qq >> packagesList.txt
     fi
 
+    #check if each package is installed on the system, if not then add to the array missing package
     for package in ${reqPackage[@]};do
-        if grep -q "$package" packagesList.txt ;then
-            echo package exist
+        if ! grep -qw "$package" packagesList.txt ;then
+           missingPackage+=($package)
+           echo -e "\e[31m$package is not exists\e[0m" >&2
         else
-            echo package doest exist
-            missingPackage+=($package)
+            echo -e "\e[33m$package already exist\e[0m" >&2
         fi
     done
     
-
-    echo $missingPackage
+    #return the missing package
+    echo ${missingPackage[@]}
 
 
 
@@ -33,12 +43,53 @@ findPackage(){
 
 
 
+installPackage(){
+    #################################################
+    #  this function trying to install packages from the missingPackage(or package that user wantbut #  it not on the system yet).
+    #################################################
+   
+    missingPackage=($(findPackage $@)) #run findPackage with positional argument to send the package names that user want to install, and if it not in the system yet, it will return back in to missingPackage variable 
+  
+    
+    
+    
+    # loop over list of packages, and try to install each package
+    for pac in ${missingPackage[@]};do
+        echo instaling......
+        if pacman -Syu --noconfirm --quiet  $pac &>/dev/null;then
+            echo -e "\e[32mInstall $pac successfully\e[0m"
+            #if install successfully it will print install sucessfully
+        else
+            echo -e "\e[31mpackage $pac doesnt exist in local database or error occur\e[0m"
+            #if it cant not install it will print package doesnt exist in local database or error occur
+        fi
+    done
+
+
+
+
+
+    
+
+    
+    
+
+
+    
+
+
+
+
+}
+
+
 
 checkingFile(){
-
+        # check if the starter files is already exist 
+        # return 1 if doesnt exist
         if [[ -e './2420-as2-starting-files' ]];then
             echo 'starting files is exist'
-            return 0
+            return 0 
         else
             return 1
         fi
@@ -47,16 +98,30 @@ checkingFile(){
 
 
 clone_dir(){
-    checkingFile
-    status=$?
+
+    checkingFile # running checking
+    status=$? # get the return value and put it to status 
 
     
-
-    if [[ status -eq 1 ]];then
+    # if the directory is not exist ( status = 1) it clone the starter files
+    if [[ status -eq 1 ]];then 
         echo clonning....
         git clone https://gitlab.com/cit2420/2420-as2-starting-files.git
     fi
 }
 
+# get the flag, if the flag is p then ask for argument (names for the packages)
+while getopts "p:" opt;do
+    case $opt in 
 
-findPackage
+    p)
+        installPackage ${OPTARG}
+        # run the function install package and using argument of p as packages name
+        
+        ;;
+    ?) 
+        echo flag doesnt exist
+        ;;
+
+    esac
+done

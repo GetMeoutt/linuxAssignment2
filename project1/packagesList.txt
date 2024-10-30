@@ -13,6 +13,7 @@ bash
 bash-completion
 binutils
 bison
+bob
 brotli
 btrfs-progs
 bzip2
@@ -72,6 +73,7 @@ iptables
 iputils
 jansson
 json-c
+kakoune
 kbd
 keyutils
 kmod
@@ -80,6 +82,7 @@ less
 libarchive
 libassuan
 libbpf
+libbsd
 libcap
 libcap-ng
 libedit
@@ -94,6 +97,7 @@ libisl
 libksba
 libldap
 libluv
+libmd
 libmnl
 libmpc
 libnetfilter_conntrack
@@ -119,6 +123,7 @@ libtool
 libunistring
 liburcu
 libusb
+libutempter
 libutf8proc
 libuv
 libverto
@@ -153,6 +158,7 @@ nodejs
 nodejs-nopt
 npm
 npth
+openbsd-netcat
 openssh
 openssl
 p11-kit
@@ -203,6 +209,7 @@ run-parts
 sed
 semver
 shadow
+sl
 snapd
 speedtest-cli
 sqlite
@@ -213,6 +220,7 @@ systemd-libs
 systemd-sysvcompat
 tar
 texinfo
+tmux
 tpm2-tss
 tree
 tree-sitter
