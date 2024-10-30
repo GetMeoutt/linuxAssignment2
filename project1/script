@@ -1,0 +1,62 @@
+#!/bin/bash
+
+
+
+
+findPackage(){
+   
+    reqPackage=( "git" "kakoune" "tmux")
+    declare missingPackage -a 
+    
+
+    if [[ ! -e ./packagesList ]];then
+        pacman -Qq > packagesList.txt
+    else
+        pacman -Qq >> packagesList.txt
+    fi
+
+    for package in ${reqPackage[@]};do
+        if grep -q "$package" packagesList.txt ;then
+            echo package exist
+        else
+            echo package doest exist
+            missingPackage+=($package)
+        fi
+    done
+    
+
+    echo $missingPackage
+
+
+
+}
+
+
+
+
+checkingFile(){
+
+        if [[ -e './2420-as2-starting-files' ]];then
+            echo 'starting files is exist'
+            return 0
+        else
+            return 1
+        fi
+
+}
+
+
+clone_dir(){
+    checkingFile
+    status=$?
+
+    
+
+    if [[ status -eq 1 ]];then
+        echo clonning....
+        git clone https://gitlab.com/cit2420/2420-as2-starting-files.git
+    fi
+}
+
+
+findPackage
