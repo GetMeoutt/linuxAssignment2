@@ -1,0 +1,202 @@
+#!/bin/bash
+
+if [[ -z $1 ]];then
+    echo "Usage: sudo userSet [OPTION].....
+    -m <username> create user
+    -s <shellPath> assign shell path"
+fi
+
+
+
+#todo 2.error handling for invalid shell path
+create_user(){
+   username=$1
+   userShell=$2
+   userHome="/home/$username"
+   userInfo=$3
+
+   if [[ -z $2 ]];then
+        userShell="/bin/bash"
+    fi
+
+   
+    ############# error handling for shell path ######################
+    #this will check if the shell path that user enter is exsit ( real shell available to use)
+
+    shellList=$(tail -n +4 /etc/shells | cat ) # get the available shell (dont want the first 3 line, thus use the tail -n+4) and save it in variable shellList
+    shellList=(${shellList[0]}) #adjust index array 
+    
+    # check if one of the user shell path is available, by comparing it to the variable shellList
+    if [[ ! ${shellList[@]} =~ $userShell ]];then
+        echo "invalid shell path" #if not match one of them then return 1
+        return 1
+    fi
+
+
+
+
+
+
+
+
+    ############# exist username error handling #######################
+    #error handling for the exist username 
+    usedUserName=$(cut -d ":" -f1-1 /etc/passwd ) # get the list of the user name in passwd file, by cutting from :, first : to the next :
+    usedUserName=(${usedUserName[0]}) # adjust the array to make the position match index
+
+    
+    # loop over the exist username, if the name that user provide is match one of them, then return 1 and echo "this user name has already been used"
+    for name in ${usedUserName[@]};do 
+        if [[ $name == $username ]];then
+            echo "this user name has already been used"
+            return 1
+        fi
+    done
+
+    ##############################################################
+
+    
+
+    ######################## ASSIGN user ID #######################
+    #give the user ID, 1. the id need to be unique and not in range of 1-999 and not 65534
+
+    # useduserID store the value of the userID that has been created, by using cut : for the 3-3 (third position), to get the ID number in the passwd file
+    usedUserID=$(cut -d ":" -f3-3 /etc/passwd )    
+
+    
+
+    #adjust userID index
+    usedUserID=(${usedUserID[0]})
+
+
+
+    #find the available id from the range of 1000-65533, if the id is available(not in used id) then it assign to variable call userID. 
+    for i in {1000..65533};do
+        if [[ ! ${usedUserID[@]} =~ $i ]];then
+            userID=$i 
+            break
+        fi
+
+
+    done 
+    # if the userID variable still empty then it will start another loop starting from id 65535 to 4294967295
+    if [[ -z $userID ]];then
+
+        for i in {65535..4294967295};do
+        if [[ ! ${usedUserID[@]} =~ $i ]];then
+            userID=$i
+            break
+        fi
+
+
+    done 
+    fi
+    
+   
+    ##############################################################
+
+   
+    #user detail in the form that can be put in passwd file
+    userdetail="$username:x:$userID:$userID:$userInfo:$userHome:$userShell"
+
+
+    
+    #add user detail to passwd file by using shell redirection
+    echo $userdetail >> /etc/passwd
+    echo "added user detail to passwd file" >&2
+
+
+    ### make home dir, by using make dir
+    if mkdir $userHome;then
+        echo "create home directory successfully"
+    else
+        echo "An error occured"
+    fi
+    ##copy the content /etc/skel
+    if cp -r /etc/skel $userHome;then
+        echo "copy setting from /etc/skel successfully"
+    else
+        echo "An error occured"
+    fi
+    ##add user password
+    passwd $username
+
+    #make a group detail, in form that can be add in group file
+    groupDetail=$username:x:$userID:
+    # append the group detail to the file group in etc folder by using shell redirection
+    echo $groupDetail >> /etc/group
+}
+
+    ############# ADD USER TO OTHER GROUP ######################
+
+
+
+
+adduserGroup(){
+
+    local entergroup=$1
+    if [[ -z $1 ]];then
+        return 0
+    fi
+    
+    groupNames=$(cut -d ":" -f1-1 /etc/group )
+    groupNames=(${groupNames[0]})
+   
+    if [[ ! ${groupNames[@]} =~ $entergroup ]];then 
+        echo "the group you trying to add user too does not exsit!"
+    else
+        linenum=$( grep -n $entergroup /etc/group | cut -d: -f1) 
+        awk -F: '$1 == "search_string" {print}' filename
+        echo $linenum
+        
+
+    fi
+
+}
+
+
+
+
+
+
+
+
+
+
+while getopts "s:m:" opt;do
+    case $opt in 
+    
+        m)
+        m_flag=true
+        enterName=${OPTARG}
+        ;;
+        s)
+        s_flag=true
+        enterShell=${OPTARG}
+        ;;
+        
+    
+    esac
+done
+adduserGroup arch
+
+
+# if [[ ! -z $@ && ! $m_flag ]];then
+#     echo "flag -m is required"
+# elif [[ ! -z $@ && $m_flag && ! $s_flag ]];then
+#     echo "user shell set to default : /bin/bash"
+#     create_user $enterName 
+# else
+#     create_user $enterName $enterShell
+# fi
+
+#create_user bob2 bloo /bin/bash
+
+
+
+
+
+
+
+#link
+#https://www.baeldung.com/linux/find-available-shells#:~:text=To%20find%20available%20shells%20on,shells%20installed%20on%20the%20system.
