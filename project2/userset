@@ -135,20 +135,45 @@ create_user(){
 adduserGroup(){
 
     local entergroup=$1
+    local username=$2
     if [[ -z $1 ]];then
         return 0
     fi
-    
+   
     groupNames=$(cut -d ":" -f1-1 /etc/group )
     groupNames=(${groupNames[0]})
    
     if [[ ! ${groupNames[@]} =~ $entergroup ]];then 
         echo "the group you trying to add user too does not exsit!"
     else
-        linenum=$( grep -n $entergroup /etc/group | cut -d: -f1) 
-        awk -F: '$1 == "search_string" {print}' filename
-        echo $linenum
         
+        # get the list of group name by using awk
+        # seperte each position by -F:, -v to pass the value to awk
+        # check if the first field in anyline is match with the entergroup 
+        groupmatch=$(awk -F: -v group="$entergroup" '$1 == group {print}' /etc/group)
+        
+        # get the line number by usig grep -n to get the line number, and cut to get the value of line number only
+        numberline=$(grep -n $groupmatch /etc/group | cut -d: -f1 )
+    
+
+        #check if the group that user trying to add has the group member or not, if there are then we need to add the colon before the username 
+        groupmember=$(grep -n $groupmatch /etc/group | cut -d: -f5 )
+       
+        
+       
+        
+       
+       
+        if [[ -z $groupmember ]];then # if the group have no memeber
+            sed -i "${numberline}s/$/$username/" /etc/group # insert the end of the line(line $linenumber) with username 
+        else
+            sed -i "${numberline}s/$/,$username/" /etc/group # insert the end of the line with username with , before the name
+        fi
+
+        sed -n ${numberline}p /etc/group
+
+    
+     
 
     fi
 
@@ -163,7 +188,7 @@ adduserGroup(){
 
 
 
-while getopts "s:m:" opt;do
+while getopts "s:m:g:" opt;do
     case $opt in 
     
         m)
@@ -174,23 +199,31 @@ while getopts "s:m:" opt;do
         s_flag=true
         enterShell=${OPTARG}
         ;;
+        g)
+        g_flag=true
+        enterGroup=${OPTARG}
         
-    
+        
+        
+        ;;
     esac
 done
-adduserGroup arch
 
 
-# if [[ ! -z $@ && ! $m_flag ]];then
-#     echo "flag -m is required"
-# elif [[ ! -z $@ && $m_flag && ! $s_flag ]];then
-#     echo "user shell set to default : /bin/bash"
-#     create_user $enterName 
-# else
-#     create_user $enterName $enterShell
-# fi
 
-#create_user bob2 bloo /bin/bash
+if [[ ! -z $@ && ! $m_flag ]];then
+    echo "flag -m is required to use with other flag"
+elif [[ ! -z $@ && $m_flag && ! $s_flag  && ! $g_flag ]];then
+    echo "user shell set to default : /bin/bash"
+    create_user $enterName 
+elif [[ ! -z $@ && $g_flag && ! $m_flag ]];then
+    echo "to use -g, -m is required"
+elif [[ ! -z $@ && $m_flag ]];then
+    create_user $enterName $enterShell 
+    adduserGroup $enterGroup $enterName
+fi
+
+
 
 
 
@@ -200,3 +233,5 @@ adduserGroup arch
 
 #link
 #https://www.baeldung.com/linux/find-available-shells#:~:text=To%20find%20available%20shells%20on,shells%20installed%20on%20the%20system.
+
+#https://stackoverflow.com/questions/62887981/modifying-a-particular-line-in-a-text-file-from-the-command-line
