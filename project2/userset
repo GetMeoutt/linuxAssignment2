@@ -1,14 +1,19 @@
 #!/bin/bash
 
+
+# if no argument/flag provide then explain what the script can do
 if [[ -z $1 ]];then
     echo "Usage: sudo userSet [OPTION].....
     -m <username> create user
-    -s <shellPath> assign shell path"
+    -s <shellPath> assign shell path
+    -g <groupname> add user to the existing group
+    for more information -h or --help"
+    
 fi
 
 
 
-#todo 2.error handling for invalid shell path
+#todo chown peroission, check group id is avaible 
 create_user(){
    username=$1
    userShell=$2
@@ -21,7 +26,7 @@ create_user(){
 
    
     ############# error handling for shell path ######################
-    #this will check if the shell path that user enter is exsit ( real shell available to use)
+    #this will check if the shell path that user enter is exist ( real shell available to use)
 
     shellList=$(tail -n +4 /etc/shells | cat ) # get the available shell (dont want the first 3 line, thus use the tail -n+4) and save it in variable shellList
     shellList=(${shellList[0]}) #adjust index array 
@@ -41,7 +46,7 @@ create_user(){
 
     ############# exist username error handling #######################
     #error handling for the exist username 
-    usedUserName=$(cut -d ":" -f1-1 /etc/passwd ) # get the list of the user name in passwd file, by cutting from :, first : to the next :
+    usedUserName=$(cut -d ":" -f1 /etc/passwd ) # get the list of the user name in passwd file, by cutting from :, first : to the next :
     usedUserName=(${usedUserName[0]}) # adjust the array to make the position match index
 
     
@@ -61,7 +66,7 @@ create_user(){
     #give the user ID, 1. the id need to be unique and not in range of 1-999 and not 65534
 
     # useduserID store the value of the userID that has been created, by using cut : for the 3-3 (third position), to get the ID number in the passwd file
-    usedUserID=$(cut -d ":" -f3-3 /etc/passwd )    
+    usedUserID=$(cut -d ":" -f3 /etc/passwd )    
 
     
 
@@ -89,7 +94,7 @@ create_user(){
         fi
 
 
-    done 
+        done 
     fi
     
    
@@ -105,7 +110,7 @@ create_user(){
     echo $userdetail >> /etc/passwd
     echo "added user detail to passwd file" >&2
 
-
+    ###############################################################
     ### make home dir, by using make dir
     if mkdir $userHome;then
         echo "create home directory successfully"
@@ -113,46 +118,60 @@ create_user(){
         echo "An error occured"
     fi
     ##copy the content /etc/skel
-    if cp -r /etc/skel $userHome;then
+    if cp -r /etc/skel/. $userHome;then
         echo "copy setting from /etc/skel successfully"
     else
         echo "An error occured"
+        return 1
     fi
+
+    #########################################################
     ##add user password
     passwd $username
 
-    #make a group detail, in form that can be add in group file
+    #make a group detail, in form that can be add in /etc/group file
     groupDetail=$username:x:$userID:
     # append the group detail to the file group in etc folder by using shell redirection
     echo $groupDetail >> /etc/group
+
+    ################## CHANGE the permission #################
+
+    chown -R $username:$username $userHome
 }
 
-    ############# ADD USER TO OTHER GROUP ######################
+    
 
 
 
 
 adduserGroup(){
+    ############# ADD USER TO OTHER GROUP ######################
+    # this function is use with flag -g to add user to specific group 
+    # take 2 argument which are group name and username
 
+    #get the argunent and put in the var entergroup(the group user has enter), and username of the user that trying to add to the group
     local entergroup=$1
     local username=$2
+    # if the argument is null then return 0, thus it not going to add anyuser to the group or run the below code
     if [[ -z $1 ]];then
         return 0
     fi
    
-    groupNames=$(cut -d ":" -f1-1 /etc/group )
-    groupNames=(${groupNames[0]})
+    groupNames=$(cut -d ":" -f1 /etc/group ) # get the list of the group name in /etc/group
+    groupNames=(${groupNames[0]}) # adjust index in the list
    
-    if [[ ! ${groupNames[@]} =~ $entergroup ]];then 
-        echo "the group you trying to add user too does not exsit!"
-    else
+    if [[ ! ${groupNames[@]} =~ $entergroup ]];then #check if the group that user enter is exist in the file
+        echo "the group you trying to add user too does not exist!" # if it not exist then echo to tell user that the group that he/she trying to add is not exist  
+
+    else # if the group exist then it will trying to add user to the file /etc/group ( code below)
+
         
         # get the list of group name by using awk
         # seperte each position by -F:, -v to pass the value to awk
         # check if the first field in anyline is match with the entergroup 
         groupmatch=$(awk -F: -v group="$entergroup" '$1 == group {print}' /etc/group)
         
-        # get the line number by usig grep -n to get the line number, and cut to get the value of line number only
+        # get the line number of the group by usig grep -n to get the line number, and cut to get the value of line number only
         numberline=$(grep -n $groupmatch /etc/group | cut -d: -f1 )
     
 
@@ -170,7 +189,8 @@ adduserGroup(){
             sed -i "${numberline}s/$/,$username/" /etc/group # insert the end of the line with username with , before the name
         fi
 
-        sed -n ${numberline}p /etc/group
+        
+        echo "add user to group ${entergroup} sucessfully!" # me : need to change this to the if statement of checking that it work some how!!
 
     
      
@@ -188,7 +208,7 @@ adduserGroup(){
 
 
 
-while getopts "s:m:g:" opt;do
+while getopts "s:m:g:h" opt;do
     case $opt in 
     
         m)
@@ -202,16 +222,23 @@ while getopts "s:m:g:" opt;do
         g)
         g_flag=true
         enterGroup=${OPTARG}
-        
-        
-        
         ;;
+        h)
+        h_flag=true
+        ;;
+        ?)
+        echo "error"
+
+        
+        
+        
+    
     esac
 done
 
 
-
-if [[ ! -z $@ && ! $m_flag ]];then
+### fix this if else statement- look so bad! (me: 2AM 10/31/2024)
+if [[ ! -z $@ && ! $m_flag  && ! $h_flag ]];then
     echo "flag -m is required to use with other flag"
 elif [[ ! -z $@ && $m_flag && ! $s_flag  && ! $g_flag ]];then
     echo "user shell set to default : /bin/bash"
@@ -220,7 +247,9 @@ elif [[ ! -z $@ && $g_flag && ! $m_flag ]];then
     echo "to use -g, -m is required"
 elif [[ ! -z $@ && $m_flag ]];then
     create_user $enterName $enterShell 
-    adduserGroup $enterGroup $enterName
+    if [[ ! $? -eq 1 ]];then
+        adduserGroup $enterGroup $enterName
+    fi
 fi
 
 
