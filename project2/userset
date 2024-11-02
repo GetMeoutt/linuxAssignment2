@@ -7,21 +7,67 @@ if [[ -z $1 ]];then
     -m <username> create user
     -s <shellPath> assign shell path
     -g <groupname> add user to the existing group
-    for more information -h or --help"
+    for more information -h"
     
+fi
+
+# check if this script is run by using sudo privillage 
+# source: https://askubuntu.com/questions/15853/how-can-a-script-check-if-its-being-run-as-root
+if [[ $EUID -ne 0 ]];then
+    echo please run this script using sudo command!
+    exit 1
 fi
 
 
 
-#todo chown peroission, check group id is avaible 
+
+
+
+
+
 create_user(){
+
+   # declear the values that need to be use in this function
    username=$1
    userShell=$2
    userHome="/home/$username"
    userInfo=$3
 
-   if [[ -z $2 ]];then
+
+    ############# username checking #######################
+    #
+    # this error handling check if the username that user enter is already exist in passwd file or not
+    # if the username is already exist then it will print out error
+
+
+    usedUserName=$(cut -d ":" -f1 /etc/passwd ) # get the list of the user name in passwd file, by cutting from :, and get the first field (index 0)
+    usedUserName=(${usedUserName[0]}) # adjust the array to make the position match index
+
+    
+    # loop over the exist username in passwd file, if the name that user provide is match one of them, then return 1 and echo "this user name has already been used"
+    for name in ${usedUserName[@]};do 
+        if [[ $name == $username ]];then
+            echo "this user name has already been used"
+            return 1
+        fi
+    done
+
+    ####################### Check User name charecter ################
+    # this code section check if the user name that user provide is valid (no special charecter)
+    special_char=("!" "@" "#" "$" "%" "^" "&" "*" "(" ")" "-" "_" "=" "+" "{" "}" ";" ":" "/" "?" "." ">")
+    for char in ${special_char[@]};do
+        if [[ $username == *"$char"* ]];then
+            echo "username can't contain special charecter"
+            exit 1
+        fi
+    done
+
+    
+    #check if user provide shell path, if not that give them a default shell path (/bin/bash)
+    if [[ -z $2 ]];then
+        echo "no shell path provide, the shell set to default : /bin/bash"
         userShell="/bin/bash"
+
     fi
 
    
@@ -37,36 +83,15 @@ create_user(){
         return 1
     fi
 
-
-
-
-
-
-
-
-    ############# exist username error handling #######################
-    #error handling for the exist username 
-    usedUserName=$(cut -d ":" -f1 /etc/passwd ) # get the list of the user name in passwd file, by cutting from :, first : to the next :
-    usedUserName=(${usedUserName[0]}) # adjust the array to make the position match index
-
-    
-    # loop over the exist username, if the name that user provide is match one of them, then return 1 and echo "this user name has already been used"
-    for name in ${usedUserName[@]};do 
-        if [[ $name == $username ]];then
-            echo "this user name has already been used"
-            return 1
-        fi
-    done
-
-    ##############################################################
-
     
 
-    ######################## ASSIGN user ID #######################
-    #give the user ID, 1. the id need to be unique and not in range of 1-999 and not 65534
 
-    # useduserID store the value of the userID that has been created, by using cut : for the 3-3 (third position), to get the ID number in the passwd file
-    usedUserID=$(cut -d ":" -f3 /etc/passwd )    
+    ######################## ASSIGN new user ID #######################
+    # this section of the code determine what new user id from the existing user in passwd
+    # it check in the passwd file if the id is taken or not, if not then assign it to the new user
+
+    # useduserID store the value of the userID that has been created, by using cut from : and select third position, to get the ID number in the passwd file
+    usedUserID=$(cut -d ":" -f3 /etc/passwd )    # usedUserID store list of exist userID
 
     
 
@@ -78,7 +103,7 @@ create_user(){
     #find the available id from the range of 1000-65533, if the id is available(not in used id) then it assign to variable call userID. 
     for i in {1000..65533};do
         if [[ ! ${usedUserID[@]} =~ $i ]];then
-            userID=$i 
+            userID=$i # if the index (i) is not in usedid, then assign the index to UserID and stop the loop
             break
         fi
 
@@ -98,10 +123,9 @@ create_user(){
     fi
     
    
-    ##############################################################
+    ############## APPEND user data to passwd file ###############
 
-   
-    #user detail in the form that can be put in passwd file
+   #delcare userdetail containing a user data in the form that can be append in passwd
     userdetail="$username:x:$userID:$userID:$userInfo:$userHome:$userShell"
 
 
@@ -110,7 +134,7 @@ create_user(){
     echo $userdetail >> /etc/passwd
     echo "added user detail to passwd file" >&2
 
-    ###############################################################
+    ############### Make Home Dir for User ####################
     ### make home dir, by using make dir
     if mkdir $userHome;then
         echo "create home directory successfully"
@@ -125,17 +149,60 @@ create_user(){
         return 1
     fi
 
-    #########################################################
-    ##add user password
+    ################### ADD user pasword ####################
+    ##add user password by using passwd to setup password with the new user
     passwd $username
 
+
+    ################## Make Group for User ##################
+
+    ## check if user id can be use as group id ( usually group id will equal to user id)
+    usedGroupID=$(cut -d ":" -f3 /etc/group)  
+    if [[ ${usedGroupID[@]} =~  $userID ]];then # if userid is already in group id ( mean group id is already taken)
+        echo "user id is not available to use as group id"
+        echo "assigning new group id......."
+        declare groupid
+
+        #find a available group id (now user id and group id will not match but it will try to create a group id for user)
+
+        #find the available id from the range of 1000-65533, if the id is available(not in used id) then it assign to variable call groupid. 
+        for i in {1000..65533};do
+            if [[ ! ${usedGroupID[@]} =~ $i ]];then
+                groupid=$i # if the index (i) is not in usedid, then assign the index to UserID and stop the loop
+                break
+            fi
+
+
+        done 
+        # if the userID variable still empty then it will start another loop starting from id 65535 to 4294967295
+        if [[ -z $groupid ]];then
+
+            for i in {65535..4294967295};do
+            if [[ ! ${usedGroupID[@]} =~ $i ]];then
+                groupid=$i
+                break
+            fi
+
+
+            done 
+        fi
+    else
+    echo group id : $userID
+    groupid=$userID
+    fi
+
+
+
+
+
+
     #make a group detail, in form that can be add in /etc/group file
-    groupDetail=$username:x:$userID:
+    groupDetail=$username:x:$groupid:
     # append the group detail to the file group in etc folder by using shell redirection
     echo $groupDetail >> /etc/group
 
     ################## CHANGE the permission #################
-
+    # make the permission of the user to own all of the file inside their home directory :)
     chown -R $username:$username $userHome
 }
 
@@ -241,7 +308,7 @@ done
 if [[ ! -z $@ && ! $m_flag  && ! $h_flag ]];then
     echo "flag -m is required to use with other flag"
 elif [[ ! -z $@ && $m_flag && ! $s_flag  && ! $g_flag ]];then
-    echo "user shell set to default : /bin/bash"
+   
     create_user $enterName 
 elif [[ ! -z $@ && $g_flag && ! $m_flag ]];then
     echo "to use -g, -m is required"
