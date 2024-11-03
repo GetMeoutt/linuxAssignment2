@@ -1,0 +1,49 @@
+#!/bin/bash
+
+
+# Check if this script is run using sudo privileges
+# Source: https://askubuntu.com/questions/15853/how-can-a-script-check-if-its-being-run-as-root
+if [[ $EUID -ne 0 ]]; then
+    echo "Please run this script using the sudo command!"
+    exit 1
+
+fi
+
+
+source ./script
+# get the flag, if the flag is p then ask for argument (names for the packages)
+while getopts "p:d" opt;do
+    case $opt in 
+
+    p)  
+        # installPackage ${OPTARG} # run the function install package and using argument of p as packages name
+    
+     
+        array=$(echo "$@" | grep -oP '(?<=-p ).*?(?= -|$)') 
+        array=${array[0]} # adjust array index
+
+        installPackage $array
+
+        ;;
+    d)
+        installDefaultPackage
+        ;;
+    ?) 
+        echo flag doesnt exist
+        exit 1
+        ;;
+    *)
+        echo "fix this"
+        ;;
+
+    esac
+done
+
+# ((OPTIND-1))
+
+if [[ -z $1 ]];then
+    echo "this script allow you to install the default package and custom packages"
+    echo " -p "'<name of packages>' : download the packages ""
+    echo " -d "                     : download the default packags""
+    echo " for more information --help or -H "
+fi

@@ -1,40 +1,75 @@
 #!/bin/bash
 
+#TODO : fix finding package, add more referene
+
+installDefaultPackage(){
+    # task : install default package
+    # parameter: none
+    # return: none
 
 
 
+
+
+    local reqPackage=( "git" "kakoune" "tmux") # defind the default package
+
+
+    #confirm that package is not yet install on the system by using function findPackage
+    local missingPackage=$(findPackage ${reqPackage[@]}) 
+ 
+    
+    for pac in ${missingPackage[@]};do #loop over list of packages, and try to install each package
+        echo instaling $pac......
+        if pacman -Syu --noconfirm $pac &>2;then
+            echo -e "\e[32mInstall $pac successfully\e[0m"
+            #if install successfully it will print install sucessfully
+        else
+            echo -e "\e[31mpackage $pac an error occured while downloading package\e[0m"
+            #if it cant not install it will print package doesnt exist in local database or error occur
+        fi
+    done
+
+
+
+
+
+}
+
+
+
+
+ 
 findPackage(){
-    ##################################
-    # this function check the package that user want to install on the system
-    # if the package is not exist then it will add to missing package array for it to be use in the  # installing function, if it already exist then it will do nothing
-    #
-    ##################################
+    # task : find missing package
+    # parameter: package name
+    # return: array of missing package
    
-    local reqPackage=( "git" "kakoune" "tmux") #defind the default package need to be install
-    reqPackage+=($@) #add package that user want to install
+   
+    local reqPackage+=($@) #defind package that user want to install
     declare -al missingPackage 
     #declear an emty array for package that will need to install (doesnt exist on the system)
-   
-    
-    
-    # make a packagelist contain all of the packages name
-    if [[ ! -e ./packagesList ]];then
-        pacman -Qq > packagesList.txt
-    else
-        pacman -Qq >> packagesList.txt
-    fi
-
-    #check if each package is installed on the system, if not then add to the array missing package
-    for package in ${reqPackage[@]};do
-        if ! grep -qw "$package" packagesList.txt ;then
-           missingPackage+=($package)
-           echo -e "\e[31m$package is not exists\e[0m" >&2
+  
+    for i in ${reqPackage[@]};do #loop over list of packages, and check if each package is installed on the system by using pacman -Qq | grep $i
+        if ! pacman -Qq $i >&/dev/null  ;then
+            if pacman -Ss "^$i$" >&/dev/null;then 
+                missingPackage+=("$i")
+            else
+                echo "can not find this package on local database" >&2
+            fi
+            
+            
+        
         else
-            echo -e "\e[33m$package already exist\e[0m" >&2
+            echo -e "\e[33m$i already exist\e[0m" >&2 
         fi
     done
     
-    #return the missing package
+
+    #https://stackoverflow.com/questions/2013396/mutable-list-or-array-structure-in-bash-how-can-i-easily-append-to-it
+    #check if each package is installed on the system, if not then add to the array missing package
+
+    
+    #return the missing package (user want and it is not on the system)
     echo ${missingPackage[@]}
 
 
@@ -44,13 +79,13 @@ findPackage(){
 
 
 installPackage(){
-    #################################################
-    #  this function trying to install packages from the missingPackage(or package that user wantbut #  it not on the system yet).
-    #################################################
+    # task : install package
+    # parameter: package name
+    # return: none
    
     missingPackage=($(findPackage $@)) #run findPackage with positional argument to send the package names that user want to install, and if it not in the system yet, it will return back in to missingPackage variable 
   
-    
+   
     
     
     # loop over list of packages, and try to install each package
@@ -60,7 +95,7 @@ installPackage(){
             echo -e "\e[32mInstall $pac successfully\e[0m"
             #if install successfully it will print install sucessfully
         else
-            echo -e "\e[31mpackage $pac doesnt exist in local database or error occur\e[0m"
+            echo -e "\e[31mpackage $pac doesnt exist in local database or an error occured\e[0m"
             #if it cant not install it will print package doesnt exist in local database or error occur
         fi
     done
@@ -81,35 +116,8 @@ installPackage(){
 
 
 }
+export installPackage 
+export installDefaultPackage
 
 
 
-
-
-# get the flag, if the flag is p then ask for argument (names for the packages)
-while getopts "p:d" opt;do
-    case $opt in 
-
-    p)
-        installPackage ${OPTARG}
-        # run the function install package and using argument of p as packages name
-        
-        ;;
-    d)
-        installPackage
-        ;;
-    ?) 
-        echo flag doesnt exist
-        ;;
-
-
-    esac
-done
-
-# ((OPTIND-1))
-
-if [[ -z $1 ]];then
-echo "this script allow you to install the default package and custom package"
-echo " -p "'<name of packages>' : download the packages ""
-echo " -d "                     : download the default packags""
-fi
