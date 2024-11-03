@@ -214,7 +214,7 @@ create_user(){
     for i in {0..2}; do
         ${checking_func[$i]} ${checking_arguments[$i]}
         if [[ $? -eq 1 ]]; then
-            exit 1
+            return 1
         fi
     done
 
@@ -238,7 +238,10 @@ create_user(){
 
 
     # 2. make home directory
-    mkhomeDir $userHome
+    if ! mkhomeDir $userHome ; then
+        echo "failed to create home directory"
+        return 1
+    fi
     
 
     # 3. append user data to passwd file
@@ -247,7 +250,7 @@ create_user(){
     userdetail="$username:x:$userID:$groupid:$userInfo:$userHome:$userShell" 
 
     # Add user detail to passwd file using shell redirection
-    echo $userdetail >> /etc/passwd
+    echo $userdetail >> /etc/passwd || { echo "failed to add user to passwd file" >&2; return 1; }
     echo "User details added to passwd file" >&2
 
 
@@ -256,15 +259,15 @@ create_user(){
     # Make a group detail in the form that can be added to /etc/group file
     groupDetail=$username:x:$groupid:
     # Append the group detail to the group file in the /etc folder using shell redirection
-    echo $groupDetail >> /etc/group
+    echo $groupDetail >> /etc/group || { echo "failed to add user to group file" >&2; return 1; }
 
 
     # 5. change ownership of home directory
     # Assign permissions to the user to own all the files inside their home directory
-    chown -R $username:$username $userHome
+    chown -R $username:$username $userHome || { echo "failed to change ownership of home directory" >&2; return 1; }
 
     # 6. assign password
-    passwd $username
+    passwd $username || { echo "failed to assign password" >&2; return 1; }
 
     echo "------- user details -------"
     echo username: $username
