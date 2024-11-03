@@ -72,12 +72,16 @@ check_shellpath(){
         shellList=(${shellList[0]}) # Adjust index array 
 
         # Check if the user shell path is available by comparing it to the variable shellList
-        if [[ ! ${shellList[@]} =~ $userShell ]]; then
-            echo "Invalid shell path." # If not matching one of them, return 1
-            return 1
-        fi
-        return 0
+        for shell in ${shellList[@]}; do
+            if [[ $shell == $userShell ]]; then
+                return 0
+            fi
+        done
+        echo "Invalid shell path."
+        return 1
     fi
+    return 0
+    
 
 
 }
