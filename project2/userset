@@ -8,7 +8,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 
-# TODO : add the comment for user when create user
+# TODO : add the comment for user when create user, Organize commet
 
 
 check_username_valid_chars(){
@@ -30,10 +30,9 @@ check_username_valid_chars(){
     done
     
     return 0
-    
-    
-    
 }
+
+
 check_username_exists(){
     #   task: checks if the username entered by the user already exists in the passwd file or not.
     #   parameter: username($1)
@@ -53,7 +52,7 @@ check_username_exists(){
         fi
     done
     
-    return 0
+    return 0 
     
 }
 check_shellpath(){
@@ -121,8 +120,8 @@ assign_user_id(){
     echo $userID
 }
 assign_group_id(){
-    #   task:  Check if userID can be used as group ID (usually group ID matches userID)
-    #   parameter: userID($1)
+    #   task: Check if userID can be used as group ID (usually group ID matches userID)
+    #   parameter: userID($1) 
     #   return: groupID
     
     
@@ -193,8 +192,8 @@ mkhomeDir(){
 
 
 create_user(){
-    #   Task: create user data that can be appended to the passwd and group files
-    #   Parameter: username($1), userShell($2), userInfo($3)
+    #   Task: (call other function ) create user data that can be appended to the passwd and group files
+    #   Parameter: username($1), userInfo($2), userShell($3), 
     #   Return: 0,1
     
     #   explanation
@@ -210,7 +209,7 @@ create_user(){
     # this will run every checking function and if it return 1, it will stop the script
     # if all of the checking function run successfully, it will assign the arguments to the variables
     checking_func=(check_username_valid_chars check_username_exists check_shellpath)
-    checking_arguments=($1 $1 $2)
+    checking_arguments=($1 $1 $3)
     for i in {0..2}; do
         ${checking_func[$i]} ${checking_arguments[$i]}
         if [[ $? -eq 1 ]]; then
@@ -223,15 +222,15 @@ create_user(){
     
     # 1 assign user name, usershell, userInfo, userID, groupid
     username=$1
-    userShell=$2
+    userShell=$3
     userHome="/home/$username"
-    userInfo=$3
+    userInfo=$2
     userID=$(assign_user_id)
     groupid=$(assign_group_id $userID)
     
     # 1.1 assign shell path if not provided
     # Check if the user provided a shell path. If not, set the shell to the default: /bin/bash
-    if [[ -z $2 ]]; then
+    if [[ -z $3 ]]; then
         echo "No shell path provided, setting shell to default: /bin/bash"
         userShell="/bin/bash"
     fi
@@ -298,12 +297,12 @@ adduserGroup(){
     if [[ -z $1 ]]; then
         return 0
     fi
-    
     groupNames=$(cut -d ":" -f1 /etc/group ) # Get the list of group names in /etc/group
     groupNames=(${groupNames[0]}) # Adjust index in the list
     
     if [[ ! ${groupNames[@]} =~ $entergroup ]]; then # Check if the group entered exists in the file
         echo "The group you’re trying to add the user to does not exist!" # If it doesn’t exist, echo to inform the user
+        return 1
         
     else # If the group exists, it will try to add the user to the /etc/group file (code below)
         
@@ -314,22 +313,24 @@ adduserGroup(){
         
         # Get the line number of the group by using grep -n to get the line number, then cut to get the line number only
         numberline=$(grep -n $groupmatch /etc/group | cut -d: -f1 )
-        
+  
         
         # Check if the group the user is trying to add has group members or not. If there are members, add a comma before the username.
         groupmember=$(grep -n $groupmatch /etc/group | cut -d: -f5 )
         
         if [[ -z $groupmember ]]; then # If the group has no members
-            sed -i "${numberline}s/$/$username/" /etc/group # Insert the username at the end of the line (line $linenumber)
+            
+            sed -i "${numberline}s/$/$username/" /etc/group # Insert the username at the end of the line (line $number line)
         else
             sed -i "${numberline}s/$/,$username/" /etc/group # Insert the username with a comma before the name at the end of the line
         fi
         
         echo "User added to group ${entergroup} successfully!" # Add a check to verify that it worked, if necessary
     fi
+    return 0
 }
 
-while getopts "s:m:g:hp" opt; do
+while getopts "s:m:g:hpc:" opt; do
     case $opt in
         m)
             m_flag=true
@@ -343,13 +344,16 @@ while getopts "s:m:g:hp" opt; do
             g_flag=true
             enterGroup=${OPTARG}
         ;;
-        
+        c)
+            c_flag=true
+            enterComment=${OPTARG}
+            ;;
         ?)
         ;;
     esac
 done
 
-### Fix this if-else statement - it looks messy! (Me: 2AM 10/31/2024)
+
 if [[ -z $@ ]]; then
     echo "Usage: sudo userSet [OPTION].....
     -m <username> create user
@@ -357,12 +361,12 @@ if [[ -z $@ ]]; then
     -g <groupname> add user to the existing group
     For more information: -h"
     elif [[ ! $m_flag ]]; then
-    echo "This script requires -m"
+    echo "This script requires -m <user name>"
     elif [[ $m_flag && $g_flag ]]; then
     
-    create_user $enterName $enterShell
+    create_user $enterName $enterComment $enterShell
     if [[ $? -eq 0 ]]; then
-        adduserGroup $enterGroup $enterName
+        adduserGroup $enterGroup $enterName 
     else
         echo "An error occurred."
     fi

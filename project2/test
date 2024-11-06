@@ -1,7 +1,5 @@
 
-#!/bin/bash
 
-for i in {1000..10000};do
-  echo hi
+g=$(sed -n '6p' userset)
 
-done
+echo $g
