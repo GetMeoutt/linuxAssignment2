@@ -284,49 +284,56 @@ create_user(){
 
 adduserGroup(){
     #   Task: add user to existing group (in /etc/group)
-    #   Parameter: groupname($1) username($2)
+    #   Parameter: groupname
     #   Return: 0,1
     
     # This function is used with the -g flag to add a user to a specific group
     
     
     # Get the arguments and put them in variables entergroup (the group the user entered) and username (the user to be added to the group)
-    local entergroup=$1
-    local username=$2
+
+    local entergroup=($@)
+
+    
     # If the argument is null, then return 0; it won’t add any user to the group or run the code below
-    if [[ -z $1 ]]; then
+   
+    if [[ -z $entergroup ]]; then
         return 0
     fi
-    groupNames=$(cut -d ":" -f1 /etc/group ) # Get the list of group names in /etc/group
+    groupNames=$(cut -d: -f1 /etc/group ) # Get the list of group names in /etc/group
     groupNames=(${groupNames[0]}) # Adjust index in the list
     
-    if [[ ! ${groupNames[@]} =~ $entergroup ]]; then # Check if the group entered exists in the file
-        echo "The group you’re trying to add the user to does not exist!" # If it doesn’t exist, echo to inform the user
-        return 1
-        
-    else # If the group exists, it will try to add the user to the /etc/group file (code below)
-        
-        # Get the list of group names by using awk
-        # Separate each position by -F:, -v to pass the value to awk
-        # Check if the first field on any line matches the entergroup
-        groupmatch=$(awk -F: -v group="$entergroup" '$1 == group {print}' /etc/group)
-        
-        # Get the line number of the group by using grep -n to get the line number, then cut to get the line number only
-        numberline=$(grep -n $groupmatch /etc/group | cut -d: -f1 )
-  
-        
-        # Check if the group the user is trying to add has group members or not. If there are members, add a comma before the username.
-        groupmember=$(grep -n $groupmatch /etc/group | cut -d: -f5 )
-        
-        if [[ -z $groupmember ]]; then # If the group has no members
+    for group in ${entergroup[@]};do
+
+        if [[ ! ${groupNames[@]} =~ $group ]]; then # Check if the group entered exists in the file
+            echo "The $group group you’re trying to add the user to does not exist!" # If it doesn’t exist, echo to inform the user
+            continue
+
             
-            sed -i "${numberline}s/$/$username/" /etc/group # Insert the username at the end of the line (line $number line)
-        else
-            sed -i "${numberline}s/$/,$username/" /etc/group # Insert the username with a comma before the name at the end of the line
+        else # If the group exists, it will try to add the user to the /etc/group file (code below)
+            
+            # Get the list of group names by using awk
+            # Separate each position by -F:, -v to pass the value to awk
+            # Check if the first field on any line matches the entergroup
+            groupmatch=$(awk -F: -v group="$group" '$1 == group {print}' /etc/group)
+            
+            # Get the line number of the group by using grep -n to get the line number, then cut to get the line number only
+            numberline=$(grep -n $groupmatch /etc/group | cut -d: -f1 )
+    
+            
+            # Check if the group the user is trying to add has group members or not. If there are members, add a comma before the username.
+            groupmember=$(grep -n $groupmatch /etc/group | cut -d: -f5 )
+            
+            if [[ -z $groupmember ]]; then # If the group has no members
+                
+                sed -i "${numberline}s/$/$username/" /etc/group # Insert the username at the end of the line (line $number line)
+            else
+                sed -i "${numberline}s/$/,$username/" /etc/group # Insert the username with a comma before the name at the end of the line
+            fi
+            
+            echo "User added to group ${group} successfully!" # Add a check to verify that it worked, if necessary
         fi
-        
-        echo "User added to group ${entergroup} successfully!" # Add a check to verify that it worked, if necessary
-    fi
+    done
     return 0
 }
 
@@ -366,9 +373,10 @@ if [[ -z $@ ]]; then
     
     create_user $enterName $enterComment $enterShell
     if [[ $? -eq 0 ]]; then
-        adduserGroup $enterGroup $enterName 
-    else
-        echo "An error occurred."
+      
+        echo adding group...
+        adduserGroup $enterGroup
+    
     fi
 else
     create_user $enterName $enterShell
