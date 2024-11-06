@@ -49,12 +49,12 @@ findPackage(){
     declare -al missingPackage 
     #declear an emty array for package that will need to install (doesnt exist on the system)
   
-    for i in ${reqPackage[@]};do #loop over list of packages, and check if each package is installed on the system by using pacman -Qq | grep $i
+    for i in ${reqPackage[@]};do #loop over list of packages, and check if each package is not installed on the system by using pacman
         if ! pacman -Qq $i >&/dev/null  ;then
-            if pacman -Ss "^$i$" >&/dev/null;then 
-                missingPackage+=("$i")
+            if pacman -Ss "^$i$" >&/dev/null;then  # check if package is a real package name (available on repositories)
+                missingPackage+=("$i") # add to missing package
             else
-                echo "can not find this package on local database" >&2
+                echo "can not find this package on local database" >&2 # if not a real package name then echo no
             fi
             
             
