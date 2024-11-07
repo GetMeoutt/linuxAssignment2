@@ -80,15 +80,17 @@ findPackage(){
 
 installPackage(){
     # task : install package
-    # parameter: package name
+    # parameter: none
     # return: none
-   
-    missingPackage=($(findPackage $@)) #run findPackage with positional argument to send the package names that user want to install, and if it not in the system yet, it will return back in to missingPackage variable 
-  
+    package_content=($(cat packagelist))
+    missingPackage=($(findPackage package_content)) #run findPackage with positional argument to send the package names that user want to install, and if it not in the system yet, it will return back in to missingPackage variable 
+    echo $missingPackage
    
     
     
     # loop over list of packages, and try to install each package
+
+
     for pac in ${missingPackage[@]};do
         echo instaling......
         if pacman -Syu --noconfirm --quiet  $pac &>/dev/null;then
@@ -99,25 +101,45 @@ installPackage(){
             #if it cant not install it will print package doesnt exist in local database or error occur
         fi
     done
-
-
-
-
-
-    
-
-    
-    
-
-
-    
-
+#groupa groub
+    # group:x:id:user,user
+    # groupa:x:id:filed4
 
 
 
 }
-export installPackage 
-export installDefaultPackage
+
+while getopts "p:d:" opt; do # using getopts and while loop to get the flag when script is call 
+    # assign the argument of each flag to each variable 
+    # make varible_flag to true when the flag is call
+    case $opt in
+        p)
+            m_flag=true
+            enterName=${OPTARG} 
+        ;;
+        d)
+            d_flag=true
+            enterName=${OPTARG} 
+        ;;
+       
+        ?)
+            echo invalid flag 
+        ;;
+    esac
+done
+
+
+if [[ $p_flag ]];then
+    installPackage
+fi
+
+if [[ $d_flag ]];then
+    installDefaultPackage
+
+fi
+    
+
+
 
 
 

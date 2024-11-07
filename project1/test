@@ -1,0 +1,11 @@
+#!/bin/bash
+
+
+
+
+
+
+
+content=($(cat packagelist))
+
+echo $content

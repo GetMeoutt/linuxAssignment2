@@ -10,23 +10,21 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 
-source ./script
+
 # get the flag, if the flag is p then ask for argument (names for the packages)
-while getopts "p:d" opt;do
+while getopts "pd" opt;do
     case $opt in 
 
     p)  
         # installPackage ${OPTARG} # run the function install package and using argument of p as packages name
     
      
-        array=$(echo "$@" | grep -oP '(?<=-p ).*?(?= -|$)') 
-        array=${array[0]} # adjust array index
-
-        installPackage $array
+        source script -p
+   
 
         ;;
     d)
-        installDefaultPackage
+        source script -d
         ;;
     ?) 
         echo flag doesnt exist
