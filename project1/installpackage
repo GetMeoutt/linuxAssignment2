@@ -1,42 +1,5 @@
 #!/bin/bash
 
-#TODO : fix finding package, add more referene
-
-installDefaultPackage(){
-    # task : install default package
-    # parameter: none
-    # return: none
-
-
-
-
-
-    local reqPackage=( "git" "kakoune" "tmux") # defind the default package
-
-
-    #confirm that package is not yet install on the system by using function findPackage
-    local missingPackage=$(findPackage ${reqPackage[@]}) 
- 
-    
-    for pac in ${missingPackage[@]};do #loop over list of packages, and try to install each package
-        echo instaling $pac......
-        if pacman -Syu --noconfirm $pac &>2;then
-            echo -e "\e[32mInstall $pac successfully\e[0m"
-            #if install successfully it will print install sucessfully
-        else
-            echo -e "\e[31mpackage $pac an error occured while downloading package\e[0m"
-            #if it cant not install it will print package doesnt exist in local database or error occur
-        fi
-    done
-
-
-
-
-
-}
-
-
-
 
  
 findPackage(){
@@ -54,7 +17,7 @@ findPackage(){
             if pacman -Ss "^$i$" >&/dev/null;then  # check if package is a real package name (available on repositories)
                 missingPackage+=("$i") # add to missing package
             else
-                echo "can not find this package on local database" >&2 # if not a real package name then echo no
+                echo "can not find package $i on database" >&2 # if not a real package name then echo no
             fi
             
             
@@ -83,8 +46,9 @@ installPackage(){
     # parameter: none
     # return: none
     package_content=($(cat packagelist))
-    missingPackage=($(findPackage package_content)) #run findPackage with positional argument to send the package names that user want to install, and if it not in the system yet, it will return back in to missingPackage variable 
-    echo $missingPackage
+ 
+    missingPackage=($(findPackage ${package_content[@]})) #run findPackage with positional argument to send the package names that user want to install, and if it not in the system yet, it will return back in to missingPackage variable 
+    
    
     
     
@@ -92,7 +56,7 @@ installPackage(){
 
 
     for pac in ${missingPackage[@]};do
-        echo instaling......
+        echo installing package: $pac......
         if pacman -Syu --noconfirm --quiet  $pac &>/dev/null;then
             echo -e "\e[32mInstall $pac successfully\e[0m"
             #if install successfully it will print install sucessfully
@@ -101,44 +65,11 @@ installPackage(){
             #if it cant not install it will print package doesnt exist in local database or error occur
         fi
     done
-#groupa groub
-    # group:x:id:user,user
-    # groupa:x:id:filed4
-
-
 
 }
 
-while getopts "p:d:" opt; do # using getopts and while loop to get the flag when script is call 
-    # assign the argument of each flag to each variable 
-    # make varible_flag to true when the flag is call
-    case $opt in
-        p)
-            m_flag=true
-            enterName=${OPTARG} 
-        ;;
-        d)
-            d_flag=true
-            enterName=${OPTARG} 
-        ;;
-       
-        ?)
-            echo invalid flag 
-        ;;
-    esac
-done
 
-
-if [[ $p_flag ]];then
-    installPackage
-fi
-
-if [[ $d_flag ]];then
-    installDefaultPackage
-
-fi
-    
-
+installPackage
 
 
 

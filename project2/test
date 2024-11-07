@@ -1,5 +1,0 @@
-
-
-g=$(sed -n '6p' userset)
-
-echo $g

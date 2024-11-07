@@ -11,37 +11,29 @@ fi
 
 
 
-# get the flag, if the flag is p then ask for argument (names for the packages)
-while getopts "pd" opt;do
+while getopts ":ps:" opt;do # looping though get op to get option (flag) from user
     case $opt in 
 
-    p)  
-        # installPackage ${OPTARG} # run the function install package and using argument of p as packages name
-    
-     
-        source script -p
-   
+    p) 
+        ./installpackage # if the flag match p then run the script install package
 
         ;;
-    d)
-        source script -d
-        ;;
+    s)
+        ./autoSymbolicLink ${OPTARG} # if the flag match s then run the script autoSymbolicLink and pass the argument
+    ;;
     ?) 
         echo flag doesnt exist
         exit 1
-        ;;
-    *)
-        echo "fix this"
         ;;
 
     esac
 done
 
-# ((OPTIND-1))
+
 
 if [[ -z $1 ]];then
-    echo "this script allow you to install the default package and custom packages"
-    echo " -p "'<name of packages>' : download the packages ""
-    echo " -d "                     : download the default packags""
-    echo " for more information --help or -H "
+    echo "this script allow you to download package and create symbolic for user"
+    echo "Usage sudo main [OPTION]...."
+    echo " -p  : download the packages in packagelist file"
+    echo " -s <username>  : to set up symbolic for user"
 fi
