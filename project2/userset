@@ -1,162 +1,147 @@
 #!/bin/bash
 
-# Check if this script is run using sudo privileges
+# Check if this script is run with sudo privileges
 # Source: https://askubuntu.com/questions/15853/how-can-a-script-check-if-its-being-run-as-root
-if [[ $EUID -ne 0 ]]; then # check effective user id, and if it not root (!id=0) then ask for permission.
+if [[ $EUID -ne 0 ]]; then # Check effective user ID; if it’s not root (!id=0), then ask for permission.
     echo "Please run this script using the sudo command!"
     exit 1
 fi
 
-
-
-
 check_username_exists(){
-    #   task: checks if the username entered by the user already exists in the passwd file or not.
-    #   parameter: username($1)
-    #   return: 0,1
+    #   Task: Check if the username entered by the user already exists in the passwd file.
+    #   Parameter: username($1)
+    #   Return: 0,1
     
-    #   explanation
-    #   the function looping through the list of username in passwd, it check if the name that user enter is match to any username in passwd file
-    #   if it find any match then return 1 (fail)
-    #   if it not find any match then return 0 (sucess)
+    #   Explanation:
+    #   The function loops through the list of usernames in passwd. It checks if the name entered by the user matches any username in the passwd file.
+    #   If it finds a match, it returns 1 (user exists).
+    #   If it doesn't find a match, it returns 0 (user does not exist).
     
 
+    local username=$1 # Get the username from positional argument 1 and make it local, as we don’t want other functions to use the username
 
-    local username=$1 # get the user name from positional argument 1 and make it local, since we dont want other function to be able to use the username
-
-    usedUserName=$(cut -d: -f1 /etc/passwd ) # Get the list of all usernames in the passwd file by use command cut and delimeter = :, with -f1 to get the first field (index 0) which is user name then assign it to usedUserName variable
-    usedUserName=(${usedUserName[0]}) # make string to array
+    usedUserName=$(cut -d: -f1 /etc/passwd) # Get the list of all usernames in the passwd file using cut with delimiter “:”, and -f1 to get the first field (index 0) which is the username, then assign it to the usedUserName variable
+    usedUserName=(${usedUserName[0]}) # Convert string to array
     
-    # Loop over existing usernames(usedUserName). If the name provided by the user matches any of them, return 1 and echo "This username has already been used.", this will check if username that user enter match any existing username 
-    for name in ${usedUserName[@]}; do # starting loop by loop over usedUserName
-        if [[ $name == $username ]]; then # check if enter name is equal to the name in used name 
+    # Loop over existing usernames (usedUserName). If the name provided by the user matches any of them, return 1 and echo "This username has already been used." This checks if the username entered by the user matches any existing username 
+    for name in ${usedUserName[@]}; do # Start loop by iterating over usedUserName
+        if [[ $name == $username ]]; then # Check if entered name is equal to any name in used names 
             echo "This username has already been used."
-            return 1 # if it found any match then return 1
+            return 1 # If it finds a match, return 1
         fi
     done
     
-    return 0 # if it finish loop without find any match then return 0
+    return 0 # If loop finishes without finding a match, return 0
     
 }
 check_shellpath(){
-    #   task: checks if the shell path entered by the user exists (is a real shell available for use).
-    #   parameter: shellpath($1)
-    #   return: 0,1
+    #   Task: Check if the shell path entered by the user exists (is a real shell available for use).
+    #   Parameter: shellpath($1)
+    #   Return: 0,1
     
-    #   explanation
+    #   Explanation:
     # If the shell path is not available, return 1 and echo "Invalid shell path."
-    # the function will check if the shell path is in the /etc/shells file
-    # if enterpath is null, return 0 because it will get the default shell (in create_user function)
+    # The function checks if the shell path is in the /etc/shells file.
+    # If enterpath is null, return 0 because it will use the default shell (in create_user function).
     
-    local userShell=$1 #get the positonal argument 1 and assign it to usershell
-    if [[ ! -z $userShell ]]; then # check if the username is not empty (null)
-        shellList=$(tail -n +4 /etc/shells | cat ) # Get the available shells (ignore the first 3 lines, thus using tail -n+4) and save them in the variable shellList
-        shellList=(${shellList[0]}) # make string to araay
+    local userShell=$1 # Get the positional argument 1 and assign it to userShell
+    if [[ ! -z $userShell ]]; then # Check if the username is not empty (null)
+        shellList=$(tail -n +4 /etc/shells | cat) # Get the available shells (ignore the first 3 lines, using tail -n+4) and save them in the variable shellList
+        shellList=(${shellList[0]}) # Convert string to array
         
-        for shell in ${shellList[@]}; do # looping over the available shell list
-            if [[ $shell == $userShell ]]; then # if one of the shell is match with shell path that user enter then return 0
+        for shell in ${shellList[@]}; do # Looping over the available shell list
+            if [[ $shell == $userShell ]]; then # If one of the shells matches the shell path entered by the user, return 0
                 return 0
             fi
         done
-        echo "Invalid shell path." # if loop is done meaning no shell path match, then echo and return 1
+        echo "Invalid shell path." # If loop completes with no shell path match, then echo and return 1
         return 1 
     fi
-    return 0 # return 0 if shell path null since the other function will assign the default shell path, if no shell path given
-    
-    
+    return 0 # Return 0 if shell path is null, as another function will assign the default shell path if none is given
     
 }
 assign_user_id(){
-    #  Task: determines a new user ID from the existing users in the passwd file.
-    #  Parameter:
+    #  Task: Determine a new user ID from the existing users in the passwd file.
+    #  Parameter: None
     #  Return: userID
     
-    # explanation 
+    # Explanation:
     # It checks if the ID is taken or not. If not, it assigns it to the new user.
-    # by looping from number 1000 (i=1000), it check if the number is match with any id in passwd file
-    # if i is not match (equal) to any id in the passwd file then assign it to user other wise increate i by one and loop again until it find the id (not match in passwd file)
+    # By looping from number 1000 (i=1000), it checks if the number matches any ID in the passwd file.
+    # If i does not match any ID in the passwd file, then assign it to user; otherwise, increase i by one and loop again until it finds the available ID.
 
     
-    # usedUserID stores the values of user IDs already created, by using cut from :(-d:) and selecting the third position(-f3) to get the ID number in the passwd file.
-    usedUserID=$(cut -d ":" -f3 /etc/passwd )    # usedUserID stores a list of existing user IDs
+    # usedUserID stores the values of user IDs already created, by using cut with :(-d:) and selecting the third position (-f3) to get the ID number in the passwd file.
+    usedUserID=$(cut -d ":" -f3 /etc/passwd) # usedUserID stores a list of existing user IDs
     
-    #make string to array
+    # Convert string to array
     usedUserID=(${usedUserID[0]})
-    local userID # declare variable userID
+    local userID # Declare variable userID
 
-    # the following code will try to assign the user id by finding the available id (id is not in usedID)
+    # The following code will try to assign the user ID by finding the available ID (an ID not in usedID)
 
-    local i=1000 # defind variable i, i will be use as user id when the condition met (start from 1000 because userID)
-    while [[ -z $userID ]];do # start the loop by check if the userID is still empty (not assign yet)
-        if [[ $i -eq 65534 ]];then # first check i is not 65534 since it need to preserve as nobody user
-            continue # if the condition met then skip the rest of the loop and start the new loop
+    local i=1000 # Define variable i; i will be used as user ID when the condition is met (start from 1000 because of user ID)
+    while [[ -z $userID ]];do # Start the loop by checking if the userID is still empty (not assigned yet)
+        if [[ $i -eq 65534 ]];then # First, check that i is not 65534 as it needs to be preserved as the nobody user
+            continue # If the condition is met, skip the rest of the loop and start a new loop
         fi
 
-        if [[ ! ${usedUserID[@]} =~ $i ]];then # check if i is not in usedID (availble to use for the new user)
-            userID=$i # if the i is not in used id then assign to ther UserID
-            break # stop the loop
+        if [[ ! ${usedUserID[@]} =~ $i ]];then # Check if i is not in usedID (available to use for the new user)
+            userID=$i # If i is not in used ID, assign it to userID
+            break # Stop the loop
         fi
         
-        ((i++)) # at the end of each loop, increase the value of i by 1
+        ((i++)) # At the end of each loop, increase the value of i by 1
 
     done
-
-
-
     
-    
-    echo $userID # return userID
+    echo $userID # Return userID
 }
 assign_group_id(){
-    #   task: Check if userID can be used as group ID (usually group ID matches userID)
-    #   parameter: userID($1) 
-    #   return: groupID
+    #   Task: Check if userID can be used as group ID (usually group ID matches userID).
+    #   Parameter: userID($1) 
+    #   Return: groupID
     
+    local userID=$1 # Get the positional argument 1 and assign to local variable userID
     
-    local userID=$1 #get the positional argument 1 and assign to local variable userID
-    
-    ## the following code Check if userID can be used as group ID (usually group ID matches userID)
+    # Check if userID can be used as group ID (usually group ID matches userID).
 
-    usedGroupID=$(cut -d ":" -f3 /etc/group) # get all of the group id by using cut from : (-d:)and get the third field (-f3) in /etc/group file
-    if [[ ${usedGroupID[@]} =~  $userID ]]; then # If userID is already in group ID (meaning group ID is already taken and cant use userID as group id), then it will try to find new group id for usergroup
+    usedGroupID=$(cut -d ":" -f3 /etc/group) # Get all of the group IDs by using cut with delimiter “:” and get the third field (-f3) in the /etc/group file
+    if [[ ${usedGroupID[@]} =~  $userID ]]; then # If userID is already in group ID (meaning group ID is already taken and cannot use userID as group ID), then it will try to find a new group ID for the user group
         echo "User ID is not available to use as group ID." >&2 
-        echo "Assigning new group ID.......">&2
-        declare groupid # delclear an empty variable name group id
+        echo "Assigning new group ID..." >&2
+        declare groupid # Declare an empty variable named groupid
         
         # Find an available group ID. Now, user ID and group ID will not match, but it will try to create a group ID for the user.
-        
-        # Find an available group ID. If the ID is available (not in used IDs), it assigns it to the variable groupid. (this step is similar to find user id but now we find id in /etc/group)
-        # the following code will try to assign the group id by finding the available id (id is not in used)
 
-        local i=1000 # defind variable i, i will be use as group id when the condition met (start from 1000)
-        while [[ -z $groupid ]];do # start the loop by check if the groupid is still empty (not assign yet)
-            if [[ $i -eq 65534 ]];then # first check i is not 65534 since it need to preserve as nobody group
-                continue # if the condition met then skip the rest of the loop and start the new loop
+        local i=1000 # Define variable i; i will be used as group ID when the condition is met (starting from 1000)
+        while [[ -z $groupid ]];do # Start the loop by checking if the groupid is still empty (not assigned yet)
+            if [[ $i -eq 65534 ]];then # First, check that i is not 65534 as it needs to be preserved as the nobody group
+                continue # If the condition is met, skip the rest of the loop and start a new loop
             fi
 
-            if [[ ! ${usedGroupID[@]} =~ $i ]];then # check if i is not in usedGroupID (availble to use for the new user)
-                groupid=$i # if the i is not in used id then assign to ther UserID
-                break # stop the loop
+            if [[ ! ${usedGroupID[@]} =~ $i ]];then # Check if i is not in usedGroupID (available for the new user)
+                groupid=$i # If i is not in used ID, assign it to groupid
+                break # Stop the loop
             fi
             
-            ((i++)) # at the end of each loop, increase the value of i by 1
+            ((i++)) # At the end of each loop, increase the value of i by 1
 
         done
-        echo $groupid #return groupid
+        echo $groupid # Return groupid
 
-    else # this mean user id is not in group id which mean it available to be use as group id
-        echo $userID #return userID, which will use as group id
+    else # This means userID is not in group ID, which means it’s available to use as group ID
+        echo $userID # Return userID, which will be used as group ID
         
     fi
-    
-    
 }
+
 mkhomeDir(){
-    #   Task:  Create a home directory for user
+    #   Task:  Create a home directory for the user
     #   Parameter: userHome($1)
     #   Return: 0,1
     
-    local userHome=$1 #defind the userHome variable from positional argument 1 
+    local userHome=$1 # Define the userHome variable from positional argument 1 
     
     # Create a home directory using mkdir
     if mkdir $userHome; then 
@@ -166,7 +151,7 @@ mkhomeDir(){
         return 1
     fi
     
-    ## Copy the contents from /etc/skel to the home directory that create recently 
+    # Copy the contents from /etc/skel to the newly created home directory 
     if cp -r /etc/skel/. $userHome; then
         echo "Settings copied from /etc/skel successfully."
         return 0
@@ -174,174 +159,133 @@ mkhomeDir(){
         echo "An error occurred."
         return 1
     fi
-    
-    
 }
 
-
 create_user(){
-    #   Task: create user data that can be appended to the passwd and group files
-        # - using the other function to check the argument 
+    #   Task: Create user data that can be appended to the passwd and group files
     #   Parameter: username($1), userInfo($2), userShell($3)
     #   Return: 0,1
     
-    #   explanation
-    # 0. check the argument that given to this function by using checking functions
-    # 1. assign variables (username, userShell, userHome, userID, groupid) and make it global variable
-    # 2. make home directory for user (from the function mkhomeDir)
-    # 3. append user data to passwd file 
-    # 4. append user data to group file
-    # 5. change ownership of home directory
-    # 6. assign password to the user
+    #   Explanation:
+    # 0. Check the arguments given to this function by using checking functions
+    # 1. Assign variables (username, userShell, userHome, userID, groupid) and make them global
+    # 2. Make a home directory for user (from the function mkhomeDir)
+    # 3. Append user data to passwd file 
+    # 4. Append user data to group file
+    # 5. Change ownership of home directory
+    # 6. Assign password to the user
     
-    
-    # 0. checking argument
-    # before assigning variables, check if the arguments are valid from function (check_username_valid_chars check_username_exists check_shellpath)
-    # this will run every checking function and pass down the argument, if any one of the checking function return 1 then stop the script
-    # if all of the checking function run successfully, it will assign the arguments to the variables (global)
-
-
-    checking_func=(check_username_exists check_shellpath) #defind checking function 
-    checking_arguments=($1 $3) # defind the argument that will be pass down to the function
-    for i in {0..1}; do #start loop 2 time (checking_func size)
-        ${checking_func[$i]} ${checking_arguments[$i]} #run the checking function with argument 
-        if [[ $? -eq 1 ]]; then # check if any exit code (also return ) is equal to one
-            return 1 # if any function return one then stop script and return 1 (fail)
+    checking_func=(check_username_exists check_shellpath) # Define checking functions 
+    checking_arguments=($1 $3) # Define the arguments to be passed to the functions
+    for i in {0..1}; do # Loop twice (checking_func size)
+        ${checking_func[$i]} ${checking_arguments[$i]} # Run the checking function with argument 
+        if [[ $? -eq 1 ]]; then # Check if any exit code (also return) is equal to one
+            return 1 # If any function returns one, stop script and return 1 (fail)
         fi
     done
-    
-    
-    
    
-    # 1 assign positional argument to user name, usershell, userInfo, userID, groupid (all of them are global variable)
+    # 1 Assign positional arguments to username, userShell, userInfo, userID, groupid (all global variables)
     username=$1
     userShell=$3
     userHome="/home/$username"
     userInfo=$2
-    userID=$(assign_user_id) # run the function assign_user_id and assign it to variable name userID
-    groupid=$(assign_group_id $userID) # run the assign_group_id and assign it to groupid
+    userID=$(assign_user_id) # Run the function assign_user_id and assign it to userID
+    groupid=$(assign_group_id $userID) # Run the assign_group_id and assign it to groupid
     
-    # 1.1 assign shell path if not provided
+    # 1.1 Assign shell path if not provided
     # Check if the user provided a shell path. If not, set the shell to the default: /bin/bash
-    if [[ -z $3 ]]; then # check if positionl argument (3) is empty 
+    if [[ -z $3 ]]; then # Check if positional argument (3) is empty 
         echo "No shell path provided, setting shell to default: /bin/bash" 
-        userShell="/bin/bash" # assign the default value (/bin/bash) to the usershell variable
+        userShell="/bin/bash" # Assign the default value (/bin/bash) to the userShell variable
     fi
     
-    
-    # 2. make home directory
+    # 2. Make home directory
     if ! mkhomeDir $userHome ; then
-        echo "failed to create home directory"
+        echo "Failed to create home directory"
         return 1
     fi
     
-    
-    # 3. append user data to passwd file
-    
-    # Declare userdetail containing user data in the form that can be appended to passwd
+    # 3. Append user data to passwd file
+    # make userdetail in form that can be appended to passwd file
     userdetail="$username:x:$userID:$groupid:$userInfo:$userHome:$userShell"
-    
-    # Add user detail to passwd file using shell redirection (>> becauase we trying to add not overwrite)
-    echo $userdetail >> /etc/passwd || { echo "failed to add user to passwd file" >&2; return 1; }
+    # add the userdetail to /etc/passwd file by using a redirection operator >> (append)
+    echo $userdetail >> /etc/passwd || { echo "Failed to add user to passwd file" >&2; return 1; }
     echo "User details added to passwd file" >&2 
     
-    
-    # 4. append user data to group file
-    
-    # Make a group detail from user that just created in the form that can be added to /etc/group file
+    # 4. Append user data to group file
+    # make groupDetail in form that can be appended to group file
     groupDetail=$username:x:$groupid:
-    # Append the group detail to the group file in the /etc folder using shell redirection
-    echo $groupDetail >> /etc/group || { echo "failed to add user to group file" >&2; return 1; }
+    # add the groupDetail to /etc/group file by using a redirection operator >> (append)
+    echo $groupDetail >> /etc/group || { echo "Failed to add user to group file" >&2; return 1; }
     
+    # 5. Change ownership of home directory to the new user
+    chown -R $username:$username $userHome || { echo "Failed to change ownership of home directory" >&2; return 1; }
     
-    # 5. change ownership of home directory
-    # Assign permissions to the user to own all the files inside their home directory
-    chown -R $username:$username $userHome || { echo "failed to change ownership of home directory" >&2; return 1; }
-    
-    # 6. assign password to the user
-    # check if the password that user given is correct (sucessfuly run passwd command)
-    # if not then ask for password again (run passwd again)
-
-    enterpassword=false # set the variable enterpassword, this will use to check the loop condition
-    while [[ $enterpassword == false ]];do # start the while loop by use the enterpassword variable = false
-        if passwd $username; then # run the passwd command with user name
-            enterpassword=true # if the passwd command return 0 (run sucessfuly) then change the enterpassword to true (this will stop the loop)
+    # 6. Assign password to the user
+    enterpassword=false # set the variable enterpassword to false
+    while [[ $enterpassword == false ]];do # start the while loop; run the loop if enterpassword is false
+        if passwd $username; then # use passwd for user to create a password for the account
+            enterpassword=true # if user adds password successfully change enterpassword to true (stop the loop)
         else
-            echo please enter password again! # if the passwd command return 1 (fail) then continue running the loop (run passwd again until the command passwd return 0 and print to the user
-        continue
+            echo "Please enter password again!" # if user fails to enter password then ask user again
+        continue # loop again
         fi
-    done 
+    done
 
-
-
-
-    #done, now printing out all of the user information from global variable
-    echo "------- user details -------"
+    # print the user information
+    echo "------- User details -------"
     echo username: $username
     echo comment : $userInfo
     echo shell: $userShell
     echo home: $userHome
     echo userid: $userID
     echo groupid: $groupid
-    echo "------- user details -------"
-    
-    
-    
+    echo "------- User details -------"
 }
 
-
-
 adduserGroup(){
-    #   Task: add user to existing group (in /etc/group)
+    #   Task: Add user to existing group (in /etc/group)
     #   Parameter: groupname
     #   Return: 0,1
     
-    # explaination 
-    # the function addusergroup will add the user to the group that user given by check the group name in /etc/group file and if it exist then it will create data in can be append to the group file, if not given then it stop the function
-    # and if the group that user enter is not exist then it will return 1 and stop the function
+    #   Explanation:
+    # The adduserGroup function will add the user to the group specified by the user by checking the group name in /etc/group file. If it exists, it will add the user to the group; otherwise, it will stop the function.
     
-    
-    # assign the positional argument the variable enter group
-    local entergroup=($@)
+    local entergroup=($@) # Assign the positional argument to the variable entergroup
 
-    
-    # If the argument(entergroup) is null, then return 0; it won’t add any user to the group or run the code below
     if [[ -z $entergroup ]]; then
         return 0
     fi
 
-   
-    groupNames=$(cut -d: -f1 /etc/group ) #Get all group names in /etc/group by using cut from ":" and get the first field from the group file (ex groupname:x:id after cut -> groupname)
-    groupNames=(${groupNames[0]}) # make string to list
+    groupNames=$(cut -d: -f1 /etc/group) # Get all group names in /etc/group using cut from ":" and get the first field from the group file
+    groupNames=(${groupNames[0]}) # Convert string to list
     
-    for group in ${entergroup[@]};do # looping through list of the group that user enter 
+    for group in ${entergroup[@]};do # Loop through list of groups entered by the user 
 
-        if [[ ! ${groupNames[@]} =~ $group ]]; then # Check if the group entered exists in the file by using =~
-            echo "The $group group you’re trying to add the user to does not exist!" # If it doesn’t exist, echo to inform the user
-            continue # skip the rest and start a new loop
+        if ! echo "${groupNames[@]}" | grep -wq "$group" ; then # Check if the group entered exists in the file by trying grep from the groupNames; if it fails, it will fall into if statement
+            # using -w to select only those lines containing matches that form whole words
+            # using -q to not write anything out to standard output
+            echo "The $group group you’re trying to add the user to does not exist!" # Inform the user if group doesn’t exist
+            continue 
 
-            
-        else # If the group exists, it will try to add the user to the /etc/group file (code below)
-            
+        else # If the group exists, try to add the user to the /etc/group file
             # Get the group name in the file /etc/group by using awk
             # Separate each position by -F:, -v to pass the value to awk
             # Check if the first field on any line matches the group
-            # if the group match any existing group then it assign in to variable group match
+            # if the group matches any existing group then it assigns it to variable group match
             groupmatch=$(awk -F: -v group="$group" '$1 == group {print}' /etc/group)
-            
-            # grep with -n groupmatch to get the line and line number of group match, then cut ":" and select first field to get only the line number
-            numberline=$(grep -n $groupmatch /etc/group | cut -d: -f1 )
-    
-            
-            # get the group member of the group that user trying to add by using grep and select the last field 
-            groupmember=$(grep -n $groupmatch /etc/group | cut -d: -f5 )
+            # grep -n to get the line of group match with line number 
+            # cut on field one to get the line number of group match
+            numberline=$(grep -n $groupmatch /etc/group | cut -d: -f1) 
+            # grep the group match with -n to get the group
+            # cut on filed five to get the list of the group member of the group match
+            groupmember=$(grep -n $groupmatch /etc/group | cut -d: -f5) 
 
-            # Check if the group that user is trying to add has group members or not. If there are members, add a comma before the username.
-            if [[ -z $groupmember ]]; then # If the group has no members
-                
+            if [[ -z $groupmember ]]; then 
+                # sed -i to edit the file
+                # sed -i numbers to tell which line to edit and $ to edit at the end of the line (in /etc/group file)
                 sed -i "${numberline}s/$/$username/" /etc/group # Insert the username at the end of the line 
             else
-                # else will trigger if there are member in the group 
                 sed -i "${numberline}s/$/,$username/" /etc/group # Insert the username with a comma before the name at the end of the line
             fi
 
@@ -351,9 +295,8 @@ adduserGroup(){
     return 0
 }
 
-while getopts "s:m:g:hpc:" opt; do # using getopts and while loop to get the flag when script is call 
-    # assign the argument of each flag to each variable 
-    # make varible_flag to true when the flag is call
+while getopts "s:m:g:hpc:" opt; do # Using getopts and while loop to get the flag when script is called 
+    # in each flag, assign variable to the flag and make it true when it is called, and collect the optarg when flag is called and store it in variable
     case $opt in
         m)
             m_flag=true
@@ -372,33 +315,31 @@ while getopts "s:m:g:hpc:" opt; do # using getopts and while loop to get the fla
             enterComment=${OPTARG}
         ;;
         ?)
-            echo invalid flag 
+            echo "Invalid flag" 
         ;;
     esac
 done
-
 
 if [[ -z $@ ]]; then
     echo "Usage: sudo userSet [OPTION].....
     -m <username> create user
     -s <shellPath> assign shell path (optional) 
     -g <groupname> add user to the existing group (optional)
-    -c <comment> to add comment (optional)
-    For more information: -h"
-elif [[ ! $m_flag ]]; then # check if script is call without m flag
-    echo "This script requires -m <user name>" # echo to user that no flag provide
-elif [[ $m_flag && $g_flag ]]; then # check if the flag m and g are call, then the script should call function create user and add user group
+    -c <comment> to add comment (optional)"
+elif [[ ! $m_flag ]]; then # Check if script is called without m flag
+    echo "This script requires -m <user name>" 
+elif [[ $m_flag && $g_flag ]]; then # Check if the flags m and g are called; then the script should call create_user and adduserGroup functions
     create_user "$enterName" "$enterComment" "$enterShell"
-    if [[ $? -eq 0 ]]; then # check if exit code of create user is 0 then run the add user group 
+    if [[ $? -eq 0 ]]; then # Check if exit code of create_user is 0, then run adduserGroup 
       
-        echo adding group...
+        echo "Adding group..."
         adduserGroup "$enterGroup"
     fi
 else
-    create_user "$enterName" "$enterComment" "$enterShell" # if there is flag m then run create user (other flag is optional)
+    create_user "$enterName" "$enterComment" "$enterShell" # If there is an m flag, then run create_user (other flags are optional)
 fi
 
-### note : the flag m is away require but the other flag can be empty (argumet can be empty) since the function will handle it. 
+### Note: The m flag is always required, but the other flags can be empty (argument can be empty) as the functions will handle it. 
 
 # Links
 # https://www.baeldung.com/linux/find-available-shells#:~:text=To%20find%20available%20shells%20on,shells%20installed%20on%20the%20system.

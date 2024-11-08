@@ -1,86 +1,51 @@
 #!/bin/bash
 
-
 username=$1
 homeDir=/home/$username
 starter=$homeDir/2420-as2-starting-files
 
 check_username_exists(){
-    #   task: checks if the username entered by the user already exists in the passwd file or not.
-    #   parameter: username($1)
-    #   return: 0,1
+    #   Task: checks if the username entered by the user already exists in the passwd file or not.
+    #   Parameter: username ($1)
+    #   Return: 0,1
     
-    #   explanation
-    #   the function looping through the list of username in passwd, it check if the name that user enter is match to any username in passwd file
-    #   if it find any match then return 0  (real user)
-    #   if it not find any match then return 1 (user not exist)
+    #   Explanation:
+    #   The function loops through the list of usernames in passwd. It checks if the name that the user enters matches any username in the passwd file.
+    #   If it finds any match, it returns 0 (real user).
+    #   If it does not find any match, it returns 1 (user does not exist).
     
+    local username=$1 # Get the username from positional argument 1 and make it local, since we do not want other functions to be able to use the username.
 
-
-    local username=$1 # get the user name from positional argument 1 and make it local, since we dont want other function to be able to use the username
-
-    usedUserName=$(cut -d: -f1 /etc/passwd ) # Get the list of all usernames in the passwd file by use command cut and delimeter = :, with -f1 to get the first field (index 0) which is user name then assign it to usedUserName variable
-    usedUserName=(${usedUserName[0]}) # make string to array
+    usedUserName=$(cut -d: -f1 /etc/passwd) # Get the list of all usernames in the passwd file by using the cut command with delimiter = :, with -f1 to get the first field (index 0), which is the username, then assign it to the usedUserName variable.
+    usedUserName=(${usedUserName[0]}) # Convert string to array.
     
-    # Loop over existing usernames(usedUserName). If the name provided by the user matches any of them, return 0 , this will check if username that user enter match any existing username 
-    for name in ${usedUserName[@]}; do # starting loop by loop over usedUserName
-        if [[ $name == $username ]]; then # check if enter name is equal to the name in used name 
+    # Loop over existing usernames (usedUserName). If the name provided by the user matches any of them, return 0. This will check if the username entered by the user matches any existing username.
+    for name in ${usedUserName[@]}; do # Start loop by looping over usedUserName.
+        if [[ $name == $username ]]; then # Check if the entered name is equal to the name in usedUserName.
             echo "found user"
-            return 0  # return 0, mean the username that user enter is exist in passwd file (real user)
+            return 0  # Return 0, meaning the username entered by the user exists in the passwd file (real user).
         fi
     done
     echo "invalid user"
-    exit 1 # if it finish loop without find any match then exit 1 (stop script), mean that the user name that user enter is not exist
-    
+    exit 1 # If it finishes the loop without finding any match, then exit 1 (stop script), meaning that the username entered by the user does not exist.
 }
-
-
-DeleteHomeFile(){
-    #   task: delete the file bin .bashrc .config if it exist
-    #   parameter: 
-    #   return: 
-        
-    Link=(bin .bashrc .config) # defind the list of file name that is going to be delete ( becuase these file name will be use as symbolic link target)
-
-    for file in ${Link[@]};do # start loop each file in Link
-        if [[ -e "$homeDir/$file" ]];then # check if the file is exist in home directory 
-            rm -r $homeDir/$file && echo delete $file successfully || echo unable to delete the file # if the file is exist then delete it
-        fi
-        
-    done
-
-
-}
-
-
 
 createSymbolicLink(){
-    #   task: create symbolic links from the starter file (2420-as2-starting-files)
-    #   parameter: 
-    #   return: 
+    #   Task: create symbolic links from the starter file (2420-as2-starting-files).
+    #   Parameter: none
+    #   Return: none
 
-    sourceFile=("bin" "home/bashrc" "config") # defind the file name to use as the source of symbolic link
+    Link=(bin .bashrc .config)
+    sourceFile=("bin" "home/bashrc" "config") # Define the filenames to use as the source of symbolic links.
 
-    for f in {0..2};do # loop through the number of the file that need to create as a symbolic link (3)
-        #in each loop create a symbolic link from starterfile/sourcefile to the homedirectory/linkname
-        ln -s $starter/${sourceFile[$f]} ${homeDir}/${Link[$f]} && echo create symbolic link successfully || echo fail to create symbolic link
-
+    for f in {0..2}; do # Loop through the number of files that need to be created as symbolic links (3).
+        # In each loop, create a symbolic link from starterfile/sourcefile to the homedirectory/linkname.
+        # -f to remove existing destination files.
+        # -s to make symbolic links instead of hard links.
+        ln -sf $starter/${sourceFile[$f]} ${homeDir}/${Link[$f]} && echo "create symbolic link successfully" || echo "fail to create symbolic link"
     done
-
-    
 }
 
-
-
-# call the function to check the argument and create symbolic link
-
+# Call the function to check the argument and create symbolic link.
 check_username_exists $1
-DeleteHomeFile
 createSymbolicLink
-
-
-
-
-
-
-
