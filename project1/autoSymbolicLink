@@ -4,6 +4,16 @@ username=$1
 homeDir=/home/$username
 starter=$homeDir/2420-as2-starting-files
 
+check_starter(){
+    # Task : checks if the file that user give is exist
+    if [[ ! -d $starter ]];then # check if it does not exist by -d and not (!)
+        echo "the starter file does not exist"
+        exit 1 # stop the script if file not exist
+    fi
+}
+
+
+
 check_username_exists(){
     #   Task: checks if the username entered by the user already exists in the passwd file or not.
     #   Parameter: username ($1)
@@ -14,7 +24,7 @@ check_username_exists(){
     #   If it finds any match, it returns 0 (real user).
     #   If it does not find any match, it returns 1 (user does not exist).
     
-    local username=$1 # Get the username from positional argument 1 and make it local, since we do not want other functions to be able to use the username.
+    local username=$1 # Get the username from positional argument 1 and make it local, since I do not want other functions to be able to use the username.
 
     usedUserName=$(cut -d: -f1 /etc/passwd) # Get the list of all usernames in the passwd file by using the cut command with delimiter = :, with -f1 to get the first field (index 0), which is the username, then assign it to the usedUserName variable.
     usedUserName=(${usedUserName[0]}) # Convert string to array.
@@ -46,6 +56,7 @@ createSymbolicLink(){
     done
 }
 
-# Call the function to check the argument and create symbolic link.
+# Call the function to checkfile, check the argument and create symbolic link.
+check_starter
 check_username_exists $1
 createSymbolicLink

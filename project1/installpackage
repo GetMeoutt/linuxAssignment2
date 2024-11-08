@@ -1,76 +1,106 @@
 #!/bin/bash
 
-
  
 findPackage(){
-    # task : find missing package
-    # parameter: package name
-    # return: array of missing package
+    # Task: find missing packages
+    # Parameter: package name
+    # Return: array of package names
    
+    # Explanation
+    # The function checks if the package the user is trying to install is already in the system or not
+    # If the packages are already in the system, it echoes back to the user; otherwise, it adds to missing packages
    
-    local reqPackage+=($@) #defind package that user want to install
+    local reqPackage+=($@) # Define package that the user wants to install
     declare -al missingPackage 
-    #declear an emty array for package that will need to install (doesnt exist on the system)
+    # Declare an empty array for packages that will need to be installed (doesn't exist on the system)
   
-    for i in ${reqPackage[@]};do #loop over list of packages, and check if each package is not installed on the system by using pacman
-        if ! pacman -Qq $i >&/dev/null  ;then
-            if pacman -Ss "^$i$" >&/dev/null;then  # check if package is a real package name (available on repositories)
-                missingPackage+=("$i") # add to missing package
+    for i in ${reqPackage[@]};do # Loop over the list of packages and check if each package is not installed on the system using pacman
+        if ! pacman -Qq $i &> /dev/null; then # Use pacman -Qq to get the package list and have an argument of each package name to tell the function to find the package name on the system; if it cannot (!) find it, then it will fall into the if statement below
+            if pacman -Ss "^$i$" &> /dev/null; then  # Check if the package is a real package name using -Ss (available in repositories)
+            # -Ss searches the package database
+            # &> to send any output to /dev/null (suppress)
+                missingPackage+=("$i") # Add to missing packages
             else
-                echo "can not find package $i on database" >&2 # if not a real package name then echo no
+                echo "Cannot find package $i " >&2  # If not a real package name, then echo and send to stderr because I don't want this to be captured by command substitution 
             fi
-            
             
         
         else
-            echo -e "\e[33m$i already exist\e[0m" >&2 
+            echo -e "\e[33m$i already exists\e[0m" >&2 # If the package exists, then echo to the user and send to stderr because I don't want this to be captured by command substitution 
         fi
     done
     
 
-    #https://stackoverflow.com/questions/2013396/mutable-list-or-array-structure-in-bash-how-can-i-easily-append-to-it
-    #check if each package is installed on the system, if not then add to the array missing package
-
-    
-    #return the missing package (user want and it is not on the system)
+    # Return the missing packages (user wants it, and it is not on the system)
     echo ${missingPackage[@]}
 
-
+    # Reference
+    # https://wiki.archlinux.org/title/Pacman
+    # https://stackoverflow.com/questions/2013396/mutable-list-or-array-structure-in-bash-how-can-i-easily-append-to-it
+    # Checks if each package is installed on the system; if not, add to the array of missing packages
 
 }
 
-
-
 installPackage(){
-    # task : install package
-    # parameter: none
-    # return: none
-    package_content=($(cat packagelist))
+    # Task: install package
+    # Parameter: none
+    # Return: none
+    
+    if ! isRealFile $1; then # Check if the file is real by using the function isRealFile
+        echo "File not found" # If the file is not found, return 1 and echo to inform the user
+        return 1
+    fi
+
+    local package_content=($(cat $1)) # Get the content of the file and convert it to an array
  
-    missingPackage=($(findPackage ${package_content[@]})) #run findPackage with positional argument to send the package names that user want to install, and if it not in the system yet, it will return back in to missingPackage variable 
+    local missingPackage=($(findPackage ${package_content[@]})) # Run findPackage with positional arguments to send the package names that the user wants to install; if they are not on the system yet and available to install, they will be returned into the missingPackage variable and made into an array
     
    
-    
-    
-    # loop over list of packages, and try to install each package
-
-
-    for pac in ${missingPackage[@]};do
-        echo installing package: $pac......
-        if pacman -Syu --noconfirm --quiet  $pac &>/dev/null;then
-            echo -e "\e[32mInstall $pac successfully\e[0m"
-            #if install successfully it will print install sucessfully
+    # Loop over the list of packages and try to install each package
+    for pac in ${missingPackage[@]}; do
+        echo Installing package: $pac......
+        if pacman -Syu --noconfirm $pac; then # Install each package in the list
+            echo -e "\e[32mInstalled $pac successfully\e[0m" 
+            # If installed successfully, it will print "Installed successfully"
         else
-            echo -e "\e[31mpackage $pac doesnt exist in local database or an error occured\e[0m"
-            #if it cant not install it will print package doesnt exist in local database or error occur
+            echo -e "\e[31mPackage $pac doesn't exist in the local database or an error occurred\e[0m"
+            # If it cannot install, it will print "Package doesn't exist in local database or an error occurred"
         fi
     done
 
 }
 
+installDefaultPackage(){
+    # Task: install Default package
+    # Parameter: none
+    # Return: none
+    
 
-installPackage
+    local dpackage=("kakoune" "tmux") # Define the array containing package names
+    local missingPackage=($(findPackage ${dpackage[@]})) # Check if the package is already installed on the system, and get the package name that is not on the system yet into the variable missingPackage
+    for pac in ${missingPackage[@]}; do # Loop over each missing package
+        echo Installing package: $pac......
+        if pacman -Syu --noconfirm $pac; then # Install each package in the list
+            echo -e "\e[32mInstalled $pac successfully\e[0m" 
+            # If installed successfully, it will print "Installed successfully"
+        else
+            echo -e "\e[31mPackage $pac doesn't exist in the local database or an error occurred\e[0m"
+            # If it cannot install, it will print "Package doesn't exist in local database or an error occurred"
+        fi
+    done
 
+}
 
+isRealFile(){
+    file=$1 # Define the variable file to the positional argument 1
+    
+    if [[ -f $file ]]; then # Check if the file exists 
+        return 0 # Return 0 if the file exists
+    else
+        return 1 # Return 1 if the file does not exist 
+    fi
+}
 
-
+# call all of the function
+installDefaultPackage
+installPackage $1

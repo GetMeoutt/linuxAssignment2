@@ -1,39 +1,37 @@
 #!/bin/bash
 
 
-# Check if this script is run using sudo privileges
+# Check if this script is run with sudo privileges
 # Source: https://askubuntu.com/questions/15853/how-can-a-script-check-if-its-being-run-as-root
 if [[ $EUID -ne 0 ]]; then
     echo "Please run this script using the sudo command!"
     exit 1
-
 fi
 
 
 
-while getopts ":ps:" opt;do # looping though get op to get option (flag) from user
+while getopts "p:s:" opt; do # Looping through getopts to get options (flags) from the user
     case $opt in 
 
-    p) 
-        ./installpackage # if the flag match p then run the script install package
-
+    p)  
+    # If the flag matches p, then run the script to install packages and pass the argument
+        ./installpackage ${OPTARG}
         ;;
     s)
-        ./autoSymbolicLink ${OPTARG} # if the flag match s then run the script autoSymbolicLink and pass the argument
+        ./autoSymbolicLink ${OPTARG} # If the flag matches s, then run the script autoSymbolicLink and pass the argument
     ;;
     ?) 
-        echo flag doesnt exist
+        echo "Error occurred, please try a different flag or enter a different argument."
         exit 1
         ;;
-
     esac
 done
 
 
 
-if [[ -z $1 ]];then
-    echo "this script allow you to download package and create symbolic for user"
-    echo "Usage sudo main [OPTION]...."
-    echo " -p  : download the packages in packagelist file"
-    echo " -s <username>  : to set up symbolic for user"
+if [[ -z $1 ]]; then # check if no argument pass, then run the script detail.
+    echo "This script allows you to download packages and create symbolic links for a user."
+    echo "Usage: sudo main [OPTION]...."
+    echo " -p  <filename/path> : download the packages from the file"
+    echo " -s <username>  : to set up symbolic links for a user"
 fi
