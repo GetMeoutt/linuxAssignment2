@@ -285,7 +285,7 @@ adduserGroup(){
             # cut on filed five to get the list of the group member of the group match
             groupmember=$(grep -n $groupmatch /etc/group | cut -d: -f5) 
 
-            if [[ -z $groupmember ]]; then 
+            if [[ -z $groupmember ]]; then # if the group member is empty then add the username of the user to the end of the line otherwise add command and the name at the end of the line
                 # sed -i to edit the file
                 # sed -i numbers to tell which line to edit and $ to edit at the end of the line (in /etc/group file)
                 sed -i "${numberline}s/$/$username/" /etc/group # Insert the username at the end of the line 
