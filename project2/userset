@@ -32,7 +32,7 @@ check_username_exists(){
     done
     
     return 0 # If loop finishes without finding a match, return 0
-    
+ 
 }
 check_shellpath(){
     #   Task: Check if the shell path entered by the user exists (is a real shell available for use).
@@ -96,6 +96,7 @@ assign_user_id(){
     done
     
     echo $userID # Return userID
+
 }
 assign_group_id(){
     #   Task: Check if userID can be used as group ID (usually group ID matches userID).
@@ -107,6 +108,7 @@ assign_group_id(){
     # Check if userID can be used as group ID (usually group ID matches userID).
 
     usedGroupID=$(cut -d ":" -f3 /etc/group) # Get all of the group IDs by using cut with delimiter “:” and get the third field (-f3) in the /etc/group file
+    usedGroupID=(${usedGroupID[0]})
     if [[ ${usedGroupID[@]} =~  $userID ]]; then # If userID is already in group ID (meaning group ID is already taken and cannot use userID as group ID), then it will try to find a new group ID for the user group
         echo "User ID is not available to use as group ID." >&2 
         echo "Assigning new group ID..." >&2
@@ -235,12 +237,14 @@ create_user(){
     # print the user information
     echo "------- User details -------"
     echo username: $username
-    echo comment : $userInfo
+    echo comment: $userInfo
     echo shell: $userShell
     echo home: $userHome
     echo userid: $userID
     echo groupid: $groupid
     echo "------- User details -------"
+    # reference 
+    # https://askubuntu.com/questions/678915/whats-the-difference-between-and-in-bash
 }
 
 adduserGroup(){
@@ -293,6 +297,10 @@ adduserGroup(){
         fi
     done
     return 0
+       #reference 
+    #https://www.geeksforgeeks.org/cut-command-linux-examples/
+    #https://www.geeksforgeeks.org/awk-command-unixlinux-examples/
+    
 }
 
 while getopts "s:m:g:hpc:" opt; do # Using getopts and while loop to get the flag when script is called 
@@ -320,7 +328,7 @@ while getopts "s:m:g:hpc:" opt; do # Using getopts and while loop to get the fla
     esac
 done
 
-if [[ -z $@ ]]; then
+if [[ -z $@ ]]; then # check if no argument provide then provide user about script detail
     echo "Usage: sudo userSet [OPTION].....
     -m <username> create user
     -s <shellPath> assign shell path (optional) 
