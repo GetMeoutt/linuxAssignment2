@@ -31,7 +31,7 @@ done
 
 if [[ -z $1 ]]; then # check if no argument pass, then run the script detail.
     echo "This script allows you to download packages and create symbolic links for a user."
-    echo "Usage: sudo main [OPTION]...."
+    echo "Usage: sudo ./main [OPTION]...."
     echo " -p  <filename/path> : download the packages from the file"
     echo " -s <username>  : to set up symbolic links for a user"
 fi

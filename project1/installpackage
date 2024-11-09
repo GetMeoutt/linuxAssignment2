@@ -37,7 +37,8 @@ findPackage(){
     # Reference
     # https://wiki.archlinux.org/title/Pacman
     # https://stackoverflow.com/questions/2013396/mutable-list-or-array-structure-in-bash-how-can-i-easily-append-to-it
-    # Checks if each package is installed on the system; if not, add to the array of missing packages
+    # https://www.howtogeek.com/435903/what-are-stdin-stdout-and-stderr-on-linux/
+    
 
 }
 
