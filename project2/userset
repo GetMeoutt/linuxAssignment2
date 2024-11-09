@@ -303,7 +303,7 @@ adduserGroup(){
     
 }
 
-while getopts "s:m:g:hpc:" opt; do # Using getopts and while loop to get the flag when script is called 
+while getopts "s:m:g:c:" opt; do # Using getopts and while loop to get the flag when script is called 
     # in each flag, assign variable to the flag and make it true when it is called, and collect the optarg when flag is called and store it in variable
     case $opt in
         m)
