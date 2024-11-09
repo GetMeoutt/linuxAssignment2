@@ -53,6 +53,11 @@ installpackage is a script that allows users to install packages from a file con
 **NAME**  
 installpackage - installs packages from a file containing a list of package names.
 
+**SYNOPSIS**
+```bash
+sudo ./installpackage [FILE]
+```
+
 **DESCRIPTION**  
 The script identifies package names in the file that are missing (i.e., not yet installed), checks their availability in the repositories, and then installs them. Additionally, it can install a predefined set of default packages. It provides output on the status of each package installation.
 
